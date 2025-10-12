@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fingerprint System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .fingerprint-area {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .fingerprint-area:hover {
+            background: linear-gradient(135deg, #e0e7ff 0%, #c3cfe2 100%);
+        }
+
+        .fingerprint-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .fingerprint-text {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .captured-status {
+            display: none;
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Fingerprint System</h1>
+        <p class="subtitle">Sistem Pendaftaran & Verifikasi Sidik Jari</p>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('enroll')">Daftar</button>
+            <button class="tab" onclick="switchTab('verify')">Verifikasi</button>
+        </div>
+
+        <!-- Tab Enroll -->
+        <div id="enroll-tab" class="tab-content active">
+            <form id="enrollForm">
+                <div class="form-group">
+                    <label for="userId">ID User</label>
+                    <input type="text" id="userId" placeholder="Masukkan ID (contoh: 001)" required>
+                </div>
+                <div class="form-group">
+                    <label for="userName">Nama</label>
+                    <input type="text" id="userName" placeholder="Masukkan nama lengkap" required>
+                </div>
+                <div class="form-group">
+                    <label>Sidik Jari</label>
+                    <div class="fingerprint-area" onclick="captureFingerprint('enroll')">
+                        <div class="fingerprint-icon">👆</div>
+                        <div class="fingerprint-text">Klik untuk capture sidik jari</div>
+                    </div>
+                    <div id="enroll-captured" class="captured-status">✓ Sidik jari berhasil di-capture!</div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="enrollBtn" disabled>
+                    Daftar User
+                </button>
+            </form>
+            <div id="enrollMessage" class="message"></div>
+        </div>
+
+        <!-- Tab Verify -->
+        <div id="verify-tab" class="tab-content">
+            <div class="form-group">
+                <label>Sidik Jari</label>
+                <div class="fingerprint-area" onclick="captureFingerprint('verify')">
+                    <div class="fingerprint-icon">👆</div>
+                    <div class="fingerprint-text">Klik untuk capture sidik jari</div>
+                </div>
+                <div id="verify-captured" class="captured-status">✓ Sidik jari berhasil di-capture!</div>
+            </div>
+            <button class="btn btn-primary" id="verifyBtn" onclick="verifyFingerprint()" disabled>
+                Verifikasi
+            </button>
+            <div id="verifyMessage" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let enrollTemplate = null;
+        let verifyTemplate = null;
+
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tab + '-tab').classList.add('active');
+
+            // Clear messages
+            clearMessages();
+        }
+
+        function clearMessages() {
+            document.querySelectorAll('.message').forEach(m => {
+                m.style.display = 'none';
+                m.textContent = '';
+            });
+        }
+
+        function captureFingerprint(type) {
+            // Simulasi capture fingerprint (generate random template)
+            // Dalam aplikasi nyata, ini akan menggunakan sensor fingerprint
+            const template = generateRandomTemplate();
+            
+            if (type === 'enroll') {
+                enrollTemplate = template;
+                document.getElementById('enroll-captured').style.display = 'block';
+                document.getElementById('enrollBtn').disabled = false;
+            } else {
+                verifyTemplate = template;
+                document.getElementById('verify-captured').style.display = 'block';
+                document.getElementById('verifyBtn').disabled = false;
+            }
+
+            showMessage(type + 'Message', 'Sidik jari berhasil di-capture!', 'info');
+        }
+
+        function generateRandomTemplate() {
+            // Generate template random (simulasi)
+            let template = '';
+            for (let i = 0; i < 100; i++) {
+                template += Math.random() > 0.5 ? '1' : '0';
+            }
+            return template;
+        }
+
+        function showMessage(elementId, message, type) {
+            const msgElement = document.getElementById(elementId);
+            msgElement.textContent = message;
+            msgElement.className = 'message ' + type;
+            msgElement.style.display = 'block';
+        }
+
+        // Handle Enroll Form
+        document.getElementById('enrollForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!enrollTemplate) {
+                showMessage('enrollMessage', 'Silakan capture sidik jari terlebih dahulu!', 'error');
+                return;
+            }
+
+            const userId = document.getElementById('userId').value;
+            const userName = document.getElementById('userName').value;
+
+            try {
+                const response = await fetch('/enroll', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        id: userId,
+                        name: userName,
+                        fingerprint_template: enrollTemplate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('enrollMessage', data.message, 'success');
+                    // Reset form
+                    document.getElementById('enrollForm').reset();
+                    enrollTemplate = null;
+                    document.getElementById('enroll-captured').style.display = 'none';
+                    document.getElementById('enrollBtn').disabled = true;
+                } else {
+                    showMessage('enrollMessage', data.message, 'error');
+                }
+            } catch (error) {
+                showMessage('enrollMessage', 'Terjadi kesalahan: ' + error.message, 'error');
+            }
+        });
+
+        // Handle Verify
+        async function verifyFingerprint() {
+            if (!verifyTemplate) {
+                showMessage('verifyMessage', 'Silakan capture sidik jari terlebih dahulu!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fingerprint_template: verifyTemplate
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'match') {
+                    showMessage('verifyMessage', 
+                        `✓ Cocok! ID: ${data.id}, Nama: ${data.name}`, 'success');
+                } else {
+                    showMessage('verifyMessage', '✗ Sidik jari tidak ditemukan!', 'error');
+                }
+
+                // Reset
+                verifyTemplate = null;
+                document.getElementById('verify-captured').style.display = 'none';
+                document.getElementById('verifyBtn').disabled = true;
+            } catch (error) {
+                showMessage('verifyMessage', 'Terjadi kesalahan: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
