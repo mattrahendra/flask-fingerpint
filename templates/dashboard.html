@@ -18,7 +18,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
@@ -26,6 +26,24 @@
             color: #333;
             margin-bottom: 30px;
             font-size: 32px;
+        }
+
+        .system-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .system-info h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .system-info p {
+            margin: 5px 0;
+            opacity: 0.9;
         }
 
         .stats {
@@ -108,6 +126,28 @@
             color: #856404;
         }
 
+        .confidence-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .confidence-high {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .confidence-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .confidence-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         .btn-back {
             display: inline-block;
             padding: 10px 20px;
@@ -145,6 +185,12 @@
         
         <h1>📊 Dashboard Fingerprint System</h1>
 
+        <div class="system-info">
+            <h2>🔧 Sistem 2-Sensor</h2>
+            <p>📝 <strong>Sensor 1 (Enrollment):</strong> Scan fingerprint → Kirim template ke server</p>
+            <p>✅ <strong>Sensor 2 (Verification):</strong> Scan fingerprint → Download templates → Compare di sensor → Kirim hasil</p>
+        </div>
+
         <div class="stats">
             <div class="stat-card">
                 <h3>Total User Terdaftar</h3>
@@ -157,6 +203,10 @@
             <div class="stat-card">
                 <h3>Menunggu Scan</h3>
                 <div class="number" id="pendingUsers">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Attendance Hari Ini</h3>
+                <div class="number" id="todayAttendance">0</div>
             </div>
         </div>
 
@@ -183,18 +233,19 @@
         </div>
 
         <div class="section">
-            <h2>📝 Riwayat Attendance (10 Terakhir)</h2>
+            <h2>📋 Riwayat Attendance (50 Terakhir)</h2>
             <table>
                 <thead>
                     <tr>
                         <th>User ID</th>
                         <th>Nama</th>
+                        <th>Confidence Score</th>
                         <th>Waktu</th>
                     </tr>
                 </thead>
                 <tbody id="attendanceBody">
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">Loading...</td>
+                        <td colspan="4" style="text-align: center; color: #999;">Loading...</td>
                     </tr>
                 </tbody>
             </table>
@@ -205,8 +256,8 @@
         // Load data saat halaman dibuka
         loadData();
 
-        // Auto refresh setiap 10 detik
-        setInterval(loadData, 10000);
+        // Auto refresh setiap 5 detik
+        setInterval(loadData, 5000);
 
         async function loadData() {
             try {
@@ -265,18 +316,49 @@
         function displayAttendance(attendance) {
             const tbody = document.getElementById('attendanceBody');
 
+            // Count today's attendance
+            const today = new Date().toDateString();
+            const todayCount = attendance.filter(log => {
+                const logDate = new Date(log.timestamp).toDateString();
+                return logDate === today;
+            }).length;
+            
+            document.getElementById('todayAttendance').textContent = todayCount;
+
             if (attendance.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">Belum ada data attendance</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">Belum ada data attendance</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = attendance.map(log => `
+            tbody.innerHTML = attendance.map(log => {
+                const confidenceBadge = getConfidenceBadge(log.confidence);
+                return `
                 <tr>
                     <td><strong>${log.user_id}</strong></td>
                     <td>${log.name}</td>
+                    <td>${confidenceBadge}</td>
                     <td>${formatDate(log.timestamp)}</td>
                 </tr>
-            `).join('');
+            `}).join('');
+        }
+
+        function getConfidenceBadge(confidence) {
+            if (!confidence) {
+                return '<span class="confidence-badge confidence-low">N/A</span>';
+            }
+            
+            let cssClass = 'confidence-low';
+            let label = 'Low';
+            
+            if (confidence >= 80) {
+                cssClass = 'confidence-high';
+                label = 'High';
+            } else if (confidence >= 50) {
+                cssClass = 'confidence-medium';
+                label = 'Medium';
+            }
+            
+            return `<span class="confidence-badge ${cssClass}">${confidence} - ${label}</span>`;
         }
 
         function formatDate(dateString) {
