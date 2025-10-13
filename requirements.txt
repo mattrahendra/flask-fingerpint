@@ -1,19 +1,4 @@
 # requirements.txt
-Flask
-flask-cors
-gunicorn
-
-# Procfile
-web: gunicorn app:app
-
-
-# .gitignore
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.env
-venv/
-env/
-.vscode/
-.idea/
+Flask==3.0.0
+flask-cors==4.0.0
+gunicorn==21.2.0
