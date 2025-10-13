@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 import sqlite3
 import os
@@ -6,6 +6,10 @@ from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Inisialisasi database
 def init_db():
@@ -342,3 +346,42 @@ def delete_user(user_id):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+    
+# 8. Upload fingerprint image (dari ESP32)
+@app.route('/api/upload_image', methods=['POST'])
+def upload_image():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"status": "error", "message": "No file part"}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"status": "error", "message": "No selected file"}), 400
+
+        # Tentukan nama file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"finger_{timestamp}.bmp"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        # Simpan file
+        file.save(save_path)
+
+        print(f"[UPLOAD] Image saved to {save_path}")
+
+        # Kembalikan URL publik
+        file_url = f"/uploads/{filename}"
+
+        return jsonify({
+            "status": "success",
+            "message": "Image uploaded successfully",
+            "url": file_url
+        })
+
+    except Exception as e:
+        print(f"[ERROR] Upload failed: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# 9. Serve uploaded images
+@app.route('/uploads/<path:filename>')
+def serve_uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
