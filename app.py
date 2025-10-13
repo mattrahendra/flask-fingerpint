@@ -3,16 +3,26 @@ from flask_cors import CORS
 import sqlite3
 import os
 from datetime import datetime
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_curve, auc
+from sklearn.model_selection import train_test_split
+import pickle
+import json
 
 app = Flask(__name__)
 CORS(app)
+
+# Global ensemble model
+ensemble_model = None
+model_path = 'ensemble_model.pkl'
 
 # Inisialisasi database
 def init_db():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
     
-    # Tabel users (data dari web)
+    # Tabel users
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -28,7 +38,23 @@ def init_db():
                     user_id TEXT,
                     name TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    confidence REAL,
+                    hamming_score REAL,
+                    cosine_score REAL,
+                    ensemble_score REAL,
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )''')
+    
+    # Tabel untuk menyimpan verification attempts (untuk evaluasi)
+    c.execute('''CREATE TABLE IF NOT EXISTS verification_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    template_scanned TEXT,
+                    matched_user_id TEXT,
+                    is_genuine INTEGER,
+                    hamming_score REAL,
+                    cosine_score REAL,
+                    ensemble_score REAL
                 )''')
     
     conn.commit()
@@ -36,12 +62,131 @@ def init_db():
 
 init_db()
 
-# === WEB ROUTES ===
+# ===== SIMILARITY FUNCTIONS =====
+
+def hex_to_bytes(hex_str):
+    """Convert hex string to numpy array of bytes"""
+    return np.array([int(hex_str[i:i+2], 16) for i in range(0, len(hex_str), 2)], dtype=np.uint8)
+
+def hamming_similarity(template1_hex, template2_hex):
+    """Calculate Hamming similarity (percentage of matching bits)"""
+    if len(template1_hex) != len(template2_hex):
+        return 0.0
+    
+    t1 = hex_to_bytes(template1_hex)
+    t2 = hex_to_bytes(template2_hex)
+    
+    # XOR to find differing bits
+    xor = np.bitwise_xor(t1, t2)
+    # Count differing bits
+    diff_bits = np.unpackbits(xor).sum()
+    total_bits = len(t1) * 8
+    
+    # Return similarity (not distance)
+    similarity = (1.0 - diff_bits / total_bits) * 100.0
+    return float(similarity)
+
+def cosine_similarity(template1_hex, template2_hex):
+    """Calculate Cosine similarity"""
+    if len(template1_hex) != len(template2_hex):
+        return 0.0
+    
+    t1 = hex_to_bytes(template1_hex).astype(np.float64)
+    t2 = hex_to_bytes(template2_hex).astype(np.float64)
+    
+    # Cosine similarity
+    dot_product = np.dot(t1, t2)
+    norm1 = np.linalg.norm(t1)
+    norm2 = np.linalg.norm(t2)
+    
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    
+    cosine_sim = dot_product / (norm1 * norm2)
+    # Convert to percentage
+    return float(cosine_sim * 100.0)
+
+def compute_feature_vector(template1_hex, template2_hex):
+    """Compute feature vector for ensemble model"""
+    hamming = hamming_similarity(template1_hex, template2_hex)
+    cosine = cosine_similarity(template1_hex, template2_hex)
+    return np.array([hamming, cosine])
+
+# ===== ENSEMBLE MODEL TRAINING =====
+
+def train_ensemble_model():
+    """Train Logistic Regression ensemble model"""
+    global ensemble_model
+    
+    conn = sqlite3.connect('fingerprint.db')
+    c = conn.cursor()
+    
+    # Get all verification logs
+    c.execute("""SELECT hamming_score, cosine_score, is_genuine 
+                 FROM verification_log 
+                 WHERE hamming_score IS NOT NULL AND cosine_score IS NOT NULL""")
+    logs = c.fetchall()
+    conn.close()
+    
+    if len(logs) < 20:
+        print(f"⚠️ Not enough data for training ({len(logs)} samples). Need at least 20.")
+        return False
+    
+    X = np.array([[log[0], log[1]] for log in logs])
+    y = np.array([log[2] for log in logs])
+    
+    # Check if we have both classes
+    if len(np.unique(y)) < 2:
+        print("⚠️ Need both genuine and impostor samples for training")
+        return False
+    
+    # Train model
+    ensemble_model = LogisticRegression(random_state=42, max_iter=1000)
+    ensemble_model.fit(X, y)
+    
+    # Save model
+    with open(model_path, 'wb') as f:
+        pickle.dump(ensemble_model, f)
+    
+    print(f"✅ Ensemble model trained with {len(logs)} samples")
+    print(f"   Genuine samples: {sum(y)}, Impostor samples: {len(y) - sum(y)}")
+    
+    return True
+
+def load_ensemble_model():
+    """Load pre-trained ensemble model"""
+    global ensemble_model
+    
+    if os.path.exists(model_path):
+        with open(model_path, 'rb') as f:
+            ensemble_model = pickle.load(f)
+        print("✅ Ensemble model loaded")
+        return True
+    return False
+
+def predict_ensemble(hamming_score, cosine_score):
+    """Predict match probability using ensemble"""
+    if ensemble_model is None:
+        # Fallback: weighted average
+        return (hamming_score * 0.6 + cosine_score * 0.4)
+    
+    features = np.array([[hamming_score, cosine_score]])
+    prob = ensemble_model.predict_proba(features)[0][1]  # Probability of class 1 (genuine)
+    return float(prob * 100.0)  # Convert to percentage
+
+# Load model on startup
+load_ensemble_model()
+
+# ===== WEB ROUTES =====
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
-# Test endpoint untuk ESP32
+@app.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
 @app.route('/api/test', methods=['POST', 'GET'])
 def test_endpoint():
     if request.method == 'POST':
@@ -61,33 +206,12 @@ def test_endpoint():
         return jsonify({
             "status": "success",
             "message": "GET test OK",
-            "server": "Flask",
+            "server": "Flask with Ensemble Matcher",
             "timestamp": datetime.now().isoformat()
         })
 
-@app.route('/dashboard')
-def dashboard():
-    conn = sqlite3.connect('fingerprint.db')
-    c = conn.cursor()
-    
-    # Get all users
-    c.execute("SELECT user_id, name, status, registered_at, enrolled_at FROM users ORDER BY registered_at DESC")
-    users = c.fetchall()
-    
-    # Get recent attendance
-    c.execute("""SELECT user_id, name, timestamp 
-                 FROM attendance 
-                 ORDER BY timestamp DESC 
-                 LIMIT 10""")
-    attendance = c.fetchall()
-    
-    conn.close()
-    
-    return render_template('dashboard.html', users=users, attendance=attendance)
+# ===== API ENDPOINTS =====
 
-# === API ENDPOINTS ===
-
-# 1. Registrasi user dari web (Point A)
 @app.route('/api/register_user', methods=['POST'])
 def register_user():
     try:
@@ -101,13 +225,11 @@ def register_user():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Cek apakah user_id sudah ada
         c.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
         if c.fetchone():
             conn.close()
             return jsonify({"status": "error", "message": "User ID sudah terdaftar"}), 400
         
-        # Insert user baru dengan status pending
         c.execute("""INSERT INTO users (user_id, name, status, registered_at) 
                      VALUES (?, ?, 'pending', ?)""", 
                   (user_id, name, datetime.now()))
@@ -124,7 +246,6 @@ def register_user():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 2. Cek status user (untuk polling dari web)
 @app.route('/api/check_status/<user_id>', methods=['GET'])
 def check_status(user_id):
     try:
@@ -143,69 +264,28 @@ def check_status(user_id):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 3. Simpan template dari ESP32 (Point B)
 @app.route('/api/save_template', methods=['POST'])
 def save_template():
     try:
-        # Cek apakah ada data
         if not request.data:
-            return jsonify({
-                "status": "error", 
-                "message": "No data received"
-            }), 400
+            return jsonify({"status": "error", "message": "No data received"}), 400
         
-        # Debug: Print raw data
-        raw_data = request.get_data(as_text=True)
-        print(f"[DEBUG] Raw data: {raw_data[:200]}")
+        data = request.get_json(force=True)
+        user_id = data.get('user_id') or data.get('id')
+        template = data.get('template')
         
-        # Parse JSON dengan error handling
-        try:
-            data = request.get_json(force=True)
-        except Exception as json_error:
-            print(f"[ERROR] JSON parse error: {str(json_error)}")
-            return jsonify({
-                "status": "error", 
-                "message": f"Invalid JSON: {str(json_error)}"
-            }), 400
+        if not user_id or not template:
+            return jsonify({"status": "error", "message": "user_id dan template wajib diisi"}), 400
         
-        if not data:
-            return jsonify({
-                "status": "error", 
-                "message": "Empty JSON data"
-            }), 400
-        
-        print(f"[DEBUG] JSON keys: {list(data.keys())}")
-        
-        # Validasi input - fleksibel dengan berbagai nama field
-        user_id = data.get('user_id') or data.get('id') or data.get('userId')
-        template = data.get('template') or data.get('fingerprint_template')
-        
-        print(f"[DEBUG] Extracted - user_id: '{user_id}', template length: {len(template) if template else 0}")
-        
-        if not user_id:
-            available_keys = ', '.join(data.keys())
-            return jsonify({
-                "status": "error", 
-                "message": f"user_id wajib diisi. Available keys: {available_keys}"
-            }), 400
-            
-        if not template:
-            return jsonify({
-                "status": "error", 
-                "message": "template wajib diisi"
-            }), 400
-        
-        # Validasi template length
         if len(template) < 100:
             return jsonify({
                 "status": "error",
-                "message": f"Template terlalu pendek ({len(template)} chars). Expected ~1024 chars"
+                "message": f"Template terlalu pendek ({len(template)} chars)"
             }), 400
         
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Cek apakah user ada
         c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
         user = c.fetchone()
         
@@ -213,12 +293,11 @@ def save_template():
             conn.close()
             return jsonify({
                 "status": "error", 
-                "message": f"User ID '{user_id}' tidak ditemukan. Daftar dulu di web!"
+                "message": f"User ID '{user_id}' tidak ditemukan"
             }), 404
         
         user_name, current_status = user
         
-        # Cek apakah sudah enrolled sebelumnya
         if current_status == 'enrolled':
             conn.close()
             return jsonify({
@@ -226,17 +305,13 @@ def save_template():
                 "message": f"User {user_name} sudah enrolled sebelumnya"
             }), 200
         
-        # Update template dan status
         c.execute("""UPDATE users 
                      SET template=?, status='enrolled', enrolled_at=? 
                      WHERE user_id=?""", 
                   (template, datetime.now(), user_id))
         
-        affected = c.rowcount
         conn.commit()
         conn.close()
-        
-        print(f"[SUCCESS] Updated {affected} row(s) for user_id: {user_id}")
         
         return jsonify({
             "status": "success",
@@ -246,28 +321,22 @@ def save_template():
         }), 200
         
     except Exception as e:
-        print(f"[ERROR] Exception: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "status": "error", 
-            "message": f"Server error: {str(e)}"
-        }), 500
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-# 3. Verifikasi fingerprint dari ESP32
 @app.route('/api/verify_template', methods=['POST'])
 def verify_template():
+    """Verify fingerprint using ensemble matching"""
     try:
         data = request.get_json()
-        new_template = data.get('template')
+        scanned_template = data.get('template')
         
-        if not new_template:
+        if not scanned_template:
             return jsonify({"status": "error", "message": "template wajib diisi"}), 400
         
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Ambil semua user yang sudah enrolled
+        # Get all enrolled users
         c.execute("SELECT user_id, name, template FROM users WHERE status='enrolled'")
         users = c.fetchall()
         
@@ -275,29 +344,54 @@ def verify_template():
             conn.close()
             return jsonify({"status": "no_match", "message": "Belum ada user yang terdaftar"})
         
-        # Bandingkan template (simple matching)
+        # Compare with all enrolled users
         best_match = None
-        best_similarity = 0
+        best_ensemble_score = 0.0
+        best_hamming = 0.0
+        best_cosine = 0.0
+        
+        results = []
         
         for user in users:
             user_id, name, stored_template = user
             
-            # Hitung similarity (persentase karakter yang sama)
-            if len(stored_template) == len(new_template):
-                matches = sum(a == b for a, b in zip(stored_template, new_template))
-                similarity = matches / len(stored_template)
-                
-                if similarity > best_similarity:
-                    best_similarity = similarity
-                    best_match = (user_id, name)
+            # Calculate similarities
+            hamming = hamming_similarity(stored_template, scanned_template)
+            cosine = cosine_similarity(stored_template, scanned_template)
+            ensemble = predict_ensemble(hamming, cosine)
+            
+            results.append({
+                'user_id': user_id,
+                'name': name,
+                'hamming': hamming,
+                'cosine': cosine,
+                'ensemble': ensemble
+            })
+            
+            if ensemble > best_ensemble_score:
+                best_ensemble_score = ensemble
+                best_hamming = hamming
+                best_cosine = cosine
+                best_match = (user_id, name)
         
-        # Threshold 85% similarity
-        if best_match and best_similarity > 0.70:
+        # Threshold: 70% ensemble score
+        threshold = 70.0
+        
+        if best_match and best_ensemble_score >= threshold:
             user_id, name = best_match
             
-            # Catat attendance
-            c.execute("INSERT INTO attendance (user_id, name) VALUES (?, ?)", 
-                     (user_id, name))
+            # Log verification (genuine match)
+            c.execute("""INSERT INTO verification_log 
+                        (template_scanned, matched_user_id, is_genuine, hamming_score, cosine_score, ensemble_score)
+                        VALUES (?, ?, 1, ?, ?, ?)""",
+                     (scanned_template[:100], user_id, best_hamming, best_cosine, best_ensemble_score))
+            
+            # Record attendance
+            c.execute("""INSERT INTO attendance 
+                        (user_id, name, confidence, hamming_score, cosine_score, ensemble_score) 
+                        VALUES (?, ?, ?, ?, ?, ?)""", 
+                     (user_id, name, best_ensemble_score, best_hamming, best_cosine, best_ensemble_score))
+            
             conn.commit()
             conn.close()
             
@@ -305,21 +399,61 @@ def verify_template():
                 "status": "match",
                 "user_id": user_id,
                 "name": name,
-                "similarity": round(best_similarity * 100, 2),
+                "scores": {
+                    "hamming": round(best_hamming, 2),
+                    "cosine": round(best_cosine, 2),
+                    "ensemble": round(best_ensemble_score, 2)
+                },
+                "all_results": results,
                 "message": f"✅ Selamat datang, {name}!"
             })
         else:
+            # Log verification (impostor)
+            c.execute("""INSERT INTO verification_log 
+                        (template_scanned, matched_user_id, is_genuine, hamming_score, cosine_score, ensemble_score)
+                        VALUES (?, NULL, 0, ?, ?, ?)""",
+                     (scanned_template[:100], best_hamming, best_cosine, best_ensemble_score))
+            conn.commit()
             conn.close()
+            
             return jsonify({
                 "status": "no_match",
                 "message": "❌ Sidik jari tidak terdaftar",
-                "best_similarity": round(best_similarity * 100, 2) if best_similarity > 0 else 0
+                "best_scores": {
+                    "hamming": round(best_hamming, 2),
+                    "cosine": round(best_cosine, 2),
+                    "ensemble": round(best_ensemble_score, 2)
+                },
+                "all_results": results,
+                "threshold": threshold
             })
         
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 4. Delete user (untuk cancel enrollment)
+@app.route('/api/record_attendance', methods=['POST'])
+def record_attendance():
+    """Simplified attendance recording (ESP32 already verified)"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        name = data.get('name')
+        confidence = data.get('confidence', 0)
+        
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        c.execute("""INSERT INTO attendance (user_id, name, confidence) 
+                     VALUES (?, ?, ?)""", (user_id, name, confidence))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success", "message": "Attendance recorded"})
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
     try:
@@ -333,12 +467,11 @@ def delete_user(user_id):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 5. Get all users (untuk dashboard)
 @app.route('/api/users', methods=['GET'])
 def get_users():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("SELECT user_id, name, status, registered_at, enrolled_at FROM users")
+    c.execute("SELECT user_id, name, status, registered_at, enrolled_at, template FROM users")
     users = c.fetchall()
     conn.close()
     
@@ -349,17 +482,17 @@ def get_users():
             "name": user[1],
             "status": user[2],
             "registered_at": user[3],
-            "enrolled_at": user[4]
+            "enrolled_at": user[4],
+            "template": user[5]  # Include template for ESP32 download
         })
     
     return jsonify({"status": "success", "users": user_list})
 
-# 5. Get attendance logs
 @app.route('/api/attendance', methods=['GET'])
 def get_attendance():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("""SELECT user_id, name, timestamp 
+    c.execute("""SELECT user_id, name, timestamp, confidence, hamming_score, cosine_score, ensemble_score
                  FROM attendance 
                  ORDER BY timestamp DESC 
                  LIMIT 50""")
@@ -371,10 +504,107 @@ def get_attendance():
         attendance_list.append({
             "user_id": log[0],
             "name": log[1],
-            "timestamp": log[2]
+            "timestamp": log[2],
+            "confidence": log[3],
+            "hamming_score": log[4],
+            "cosine_score": log[5],
+            "ensemble_score": log[6]
         })
     
     return jsonify({"status": "success", "attendance": attendance_list})
+
+# ===== EVALUATION ENDPOINTS =====
+
+@app.route('/api/train_ensemble', methods=['POST'])
+def train_ensemble_endpoint():
+    """Train ensemble model"""
+    success = train_ensemble_model()
+    if success:
+        return jsonify({"status": "success", "message": "Model trained successfully"})
+    else:
+        return jsonify({"status": "error", "message": "Not enough training data"}), 400
+
+@app.route('/api/evaluate', methods=['GET'])
+def evaluate_model():
+    """Evaluate model and compute ROC, EER, AUC"""
+    try:
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        c.execute("""SELECT hamming_score, cosine_score, ensemble_score, is_genuine 
+                     FROM verification_log 
+                     WHERE hamming_score IS NOT NULL""")
+        logs = c.fetchall()
+        conn.close()
+        
+        if len(logs) < 10:
+            return jsonify({
+                "status": "error",
+                "message": f"Not enough data for evaluation ({len(logs)} samples)"
+            }), 400
+        
+        # Prepare data
+        hamming_scores = np.array([log[0] for log in logs])
+        cosine_scores = np.array([log[1] for log in logs])
+        ensemble_scores = np.array([log[2] for log in logs])
+        y_true = np.array([log[3] for log in logs])
+        
+        results = {}
+        
+        # Evaluate each method
+        for name, scores in [('Hamming', hamming_scores), 
+                             ('Cosine', cosine_scores), 
+                             ('Ensemble', ensemble_scores)]:
+            
+            # Compute ROC
+            fpr, tpr, thresholds = roc_curve(y_true, scores)
+            roc_auc = auc(fpr, tpr)
+            
+            # Compute EER
+            fnr = 1 - tpr
+            eer_index = np.nanargmin(np.abs(fpr - fnr))
+            eer = (fpr[eer_index] + fnr[eer_index]) / 2
+            eer_threshold = thresholds[eer_index]
+            
+            # Find threshold at FAR = 0.1% and 1%
+            far_001_idx = np.where(fpr <= 0.001)[0]
+            far_01_idx = np.where(fpr <= 0.01)[0]
+            
+            threshold_far_001 = thresholds[far_001_idx[-1]] if len(far_001_idx) > 0 else None
+            threshold_far_01 = thresholds[far_01_idx[-1]] if len(far_01_idx) > 0 else None
+            
+            results[name] = {
+                'AUC': float(roc_auc),
+                'EER': float(eer * 100),
+                'EER_threshold': float(eer_threshold),
+                'threshold_FAR_0.1%': float(threshold_far_001) if threshold_far_001 else None,
+                'threshold_FAR_1%': float(threshold_far_01) if threshold_far_01 else None,
+                'ROC': {
+                    'FPR': fpr.tolist(),
+                    'TPR': tpr.tolist(),
+                    'thresholds': thresholds.tolist()
+                }
+            }
+        
+        # Statistics
+        genuine_count = sum(y_true)
+        impostor_count = len(y_true) - genuine_count
+        
+        return jsonify({
+            "status": "success",
+            "total_samples": len(logs),
+            "genuine_samples": int(genuine_count),
+            "impostor_samples": int(impostor_count),
+            "results": results
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
