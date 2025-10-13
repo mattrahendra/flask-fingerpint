@@ -4,208 +4,292 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Fingerprint System</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            primary: '#0a0e27',
+                            secondary: '#151b3d',
+                            accent: '#1e2749',
+                            blue: '#2563eb'
+                        }
+                    }
+                }
+            }
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 32px;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .stat-card h3 {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-
-        .stat-card .number {
-            font-size: 36px;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .section {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background: #f8f9fa;
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        tr:hover {
-            background: #f8f9fa;
-        }
-
-        .status-badge {
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-enrolled {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .btn-back {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .btn-back:hover {
-            background: #5568d3;
-        }
-
-        .refresh-btn {
-            padding: 8px 15px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            float: right;
-        }
-
-        .refresh-btn:hover {
-            background: #5568d3;
-        }
-    </style>
+    </script>
 </head>
-<body>
-    <div class="container">
-        <a href="/" class="btn-back">← Kembali ke Pendaftaran</a>
-        
-        <h1>📊 Dashboard Fingerprint System</h1>
+<body class="bg-dark-primary text-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-dark-secondary border-b border-dark-accent">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Fingerprint System</h1>
+                        <p class="text-xs text-gray-400">Dashboard & Analytics</p>
+                    </div>
+                </div>
+                <a href="/" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Registration</span>
+                </a>
+            </div>
+        </div>
+    </header>
 
-        <div class="stats">
-            <div class="stat-card">
-                <h3>Total User Terdaftar</h3>
-                <div class="number" id="totalUsers">0</div>
+    <div class="container mx-auto px-6 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Total Users</p>
+                        <p class="text-3xl font-bold" id="totalUsers">0</p>
+                    </div>
+                    <div class="bg-blue-500/20 p-4 rounded-lg">
+                        <i class="fas fa-users text-2xl text-blue-500"></i>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <h3>User Enrolled</h3>
-                <div class="number" id="enrolledUsers">0</div>
+
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Enrolled</p>
+                        <p class="text-3xl font-bold text-green-500" id="enrolledUsers">0</p>
+                    </div>
+                    <div class="bg-green-500/20 p-4 rounded-lg">
+                        <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card">
-                <h3>Menunggu Scan</h3>
-                <div class="number" id="pendingUsers">0</div>
+
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Pending</p>
+                        <p class="text-3xl font-bold text-yellow-500" id="pendingUsers">0</p>
+                    </div>
+                    <div class="bg-yellow-500/20 p-4 rounded-lg">
+                        <i class="fas fa-clock text-2xl text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Total Attendance</p>
+                        <p class="text-3xl font-bold text-purple-500" id="totalAttendance">0</p>
+                    </div>
+                    <div class="bg-purple-500/20 p-4 rounded-lg">
+                        <i class="fas fa-clipboard-check text-2xl text-purple-500"></i>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="section">
-            <h2>👥 Daftar User
-                <button class="refresh-btn" onclick="loadData()">🔄 Refresh</button>
-            </h2>
-            <table id="usersTable">
-                <thead>
-                    <tr>
-                        <th>User ID</th>
-                        <th>Nama</th>
-                        <th>Status</th>
-                        <th>Waktu Daftar</th>
-                        <th>Waktu Enrolled</th>
-                    </tr>
-                </thead>
-                <tbody id="usersBody">
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #999;">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-4 mb-8">
+            <button onclick="loadData()" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh Data</span>
+            </button>
+            <button onclick="trainEnsemble()" class="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg transition">
+                <i class="fas fa-brain"></i>
+                <span>Train Model</span>
+            </button>
+            <button onclick="evaluateModel()" class="flex items-center space-x-2 bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg transition">
+                <i class="fas fa-chart-line"></i>
+                <span>Evaluate Model</span>
+            </button>
         </div>
 
-        <div class="section">
-            <h2>📝 Riwayat Attendance (10 Terakhir)</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>User ID</th>
-                        <th>Nama</th>
-                        <th>Waktu</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceBody">
-                    <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Users Table -->
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+            <div class="p-6 border-b border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-users text-blue-500"></i>
+                        <span>Registered Users</span>
+                    </h2>
+                    <span class="text-sm text-gray-400" id="usersCount">0 users</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-dark-accent">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Registered</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Enrolled</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody" class="divide-y divide-dark-accent">
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Attendance Table -->
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+            <div class="p-6 border-b border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-clipboard-list text-green-500"></i>
+                        <span>Recent Attendance</span>
+                    </h2>
+                    <span class="text-sm text-gray-400">Last 50 records</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-dark-accent">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Timestamp</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Hamming</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Cosine</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Ensemble</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceBody" class="divide-y divide-dark-accent">
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Evaluation Results -->
+        <div id="evaluationSection" class="hidden">
+            <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+                <div class="p-6 border-b border-dark-accent">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-chart-bar text-purple-500"></i>
+                        <span>Model Evaluation Results</span>
+                    </h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-dark-accent p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm mb-2">Total Samples</p>
+                            <p class="text-2xl font-bold" id="evalTotalSamples">-</p>
+                        </div>
+                        <div class="bg-dark-accent p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm mb-2">Genuine Samples</p>
+                            <p class="text-2xl font-bold text-green-500" id="evalGenuine">-</p>
+                        </div>
+                        <div class="bg-dark-accent p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm mb-2">Impostor Samples</p>
+                            <p class="text-2xl font-bold text-red-500" id="evalImpostor">-</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Hamming Results -->
+                        <div class="bg-dark-accent p-6 rounded-lg">
+                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                                <i class="fas fa-chart-line text-blue-500"></i>
+                                <span>Hamming Distance</span>
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-gray-400 text-sm">AUC</p>
+                                    <p class="text-xl font-bold" id="hammingAUC">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER</p>
+                                    <p class="text-xl font-bold" id="hammingEER">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER Threshold</p>
+                                    <p class="text-lg" id="hammingEERThreshold">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cosine Results -->
+                        <div class="bg-dark-accent p-6 rounded-lg">
+                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                                <i class="fas fa-chart-line text-green-500"></i>
+                                <span>Cosine Similarity</span>
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-gray-400 text-sm">AUC</p>
+                                    <p class="text-xl font-bold" id="cosineAUC">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER</p>
+                                    <p class="text-xl font-bold" id="cosineEER">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER Threshold</p>
+                                    <p class="text-lg" id="cosineEERThreshold">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ensemble Results -->
+                        <div class="bg-dark-accent p-6 rounded-lg border-2 border-purple-500">
+                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
+                                <i class="fas fa-brain text-purple-500"></i>
+                                <span>Ensemble Model</span>
+                            </h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <p class="text-gray-400 text-sm">AUC</p>
+                                    <p class="text-xl font-bold text-purple-500" id="ensembleAUC">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER</p>
+                                    <p class="text-xl font-bold text-purple-500" id="ensembleEER">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-sm">EER Threshold</p>
+                                    <p class="text-lg" id="ensembleEERThreshold">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-dark-secondary border border-dark-accent rounded-lg shadow-xl p-4 transform translate-y-32 transition-transform duration-300 max-w-sm z-50">
+        <div class="flex items-center space-x-3">
+            <i id="toastIcon" class="fas fa-info-circle text-2xl"></i>
+            <p id="toastMessage" class="text-sm"></p>
         </div>
     </div>
 
     <script>
-        // Load data saat halaman dibuka
+        // Load data on page load
         loadData();
-
-        // Auto refresh setiap 10 detik
+        
+        // Auto refresh every 10 seconds
         setInterval(loadData, 10000);
 
         async function loadData() {
@@ -227,6 +311,7 @@
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
+                showToast('Error loading data', 'error');
             }
         }
 
@@ -240,43 +325,98 @@
             document.getElementById('totalUsers').textContent = totalUsers;
             document.getElementById('enrolledUsers').textContent = enrolled;
             document.getElementById('pendingUsers').textContent = pending;
+            document.getElementById('usersCount').textContent = `${totalUsers} users`;
 
             // Update table
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">Belum ada user terdaftar</td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                            <i class="fas fa-user-slash text-3xl mb-2"></i>
+                            <p>No users registered yet</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
             tbody.innerHTML = users.map(user => `
-                <tr>
-                    <td><strong>${user.user_id}</strong></td>
-                    <td>${user.name}</td>
-                    <td>
-                        <span class="status-badge status-${user.status}">
-                            ${user.status === 'enrolled' ? '✅ Enrolled' : '⏳ Pending'}
-                        </span>
+                <tr class="hover:bg-dark-accent/50 transition">
+                    <td class="px-6 py-4">
+                        <span class="font-mono font-semibold text-blue-400">${user.user_id}</span>
                     </td>
-                    <td>${formatDate(user.registered_at)}</td>
-                    <td>${user.enrolled_at ? formatDate(user.enrolled_at) : '-'}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-user-circle text-gray-400"></i>
+                            <span class="font-medium">${user.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${user.status === 'enrolled' 
+                            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Enrolled</span>'
+                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> Pending</span>'
+                        }
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm">
+                        ${formatDate(user.registered_at)}
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm">
+                        ${user.enrolled_at ? formatDate(user.enrolled_at) : '-'}
+                    </td>
                 </tr>
             `).join('');
         }
 
         function displayAttendance(attendance) {
             const tbody = document.getElementById('attendanceBody');
+            
+            // Update total attendance stat
+            document.getElementById('totalAttendance').textContent = attendance.length;
 
             if (attendance.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #999;">Belum ada data attendance</td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                            <i class="fas fa-clipboard text-3xl mb-2"></i>
+                            <p>No attendance records yet</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
             tbody.innerHTML = attendance.map(log => `
-                <tr>
-                    <td><strong>${log.user_id}</strong></td>
-                    <td>${log.name}</td>
-                    <td>${formatDate(log.timestamp)}</td>
+                <tr class="hover:bg-dark-accent/50 transition">
+                    <td class="px-6 py-4">
+                        <span class="font-mono font-semibold text-blue-400">${log.user_id}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-user-circle text-gray-400"></i>
+                            <span class="font-medium">${log.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm">
+                        ${formatDate(log.timestamp)}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm ${getScoreColor(log.hamming_score)}">${log.hamming_score ? log.hamming_score.toFixed(2) + '%' : '-'}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm ${getScoreColor(log.cosine_score)}">${log.cosine_score ? log.cosine_score.toFixed(2) + '%' : '-'}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="font-semibold ${getScoreColor(log.ensemble_score)}">${log.ensemble_score ? log.ensemble_score.toFixed(2) + '%' : '-'}</span>
+                    </td>
                 </tr>
             `).join('');
+        }
+
+        function getScoreColor(score) {
+            if (!score) return 'text-gray-400';
+            if (score >= 90) return 'text-green-400';
+            if (score >= 70) return 'text-yellow-400';
+            return 'text-red-400';
         }
 
         function formatDate(dateString) {
@@ -289,6 +429,97 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+
+        async function trainEnsemble() {
+            showToast('Training ensemble model...', 'info');
+            try {
+                const response = await fetch('/api/train_ensemble', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('Model trained successfully!', 'success');
+                } else {
+                    showToast(data.message || 'Training failed', 'error');
+                }
+            } catch (error) {
+                showToast('Error training model: ' + error.message, 'error');
+            }
+        }
+
+        async function evaluateModel() {
+            showToast('Evaluating model...', 'info');
+            try {
+                const response = await fetch('/api/evaluate');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayEvaluation(data);
+                    showToast('Evaluation complete!', 'success');
+                } else {
+                    showToast(data.message || 'Evaluation failed', 'error');
+                }
+            } catch (error) {
+                showToast('Error evaluating model: ' + error.message, 'error');
+            }
+        }
+
+        function displayEvaluation(data) {
+            document.getElementById('evaluationSection').classList.remove('hidden');
+            
+            // Stats
+            document.getElementById('evalTotalSamples').textContent = data.total_samples;
+            document.getElementById('evalGenuine').textContent = data.genuine_samples;
+            document.getElementById('evalImpostor').textContent = data.impostor_samples;
+            
+            // Hamming
+            if (data.results.Hamming) {
+                document.getElementById('hammingAUC').textContent = data.results.Hamming.AUC.toFixed(4);
+                document.getElementById('hammingEER').textContent = data.results.Hamming.EER.toFixed(2) + '%';
+                document.getElementById('hammingEERThreshold').textContent = data.results.Hamming.EER_threshold.toFixed(2);
+            }
+            
+            // Cosine
+            if (data.results.Cosine) {
+                document.getElementById('cosineAUC').textContent = data.results.Cosine.AUC.toFixed(4);
+                document.getElementById('cosineEER').textContent = data.results.Cosine.EER.toFixed(2) + '%';
+                document.getElementById('cosineEERThreshold').textContent = data.results.Cosine.EER_threshold.toFixed(2);
+            }
+            
+            // Ensemble
+            if (data.results.Ensemble) {
+                document.getElementById('ensembleAUC').textContent = data.results.Ensemble.AUC.toFixed(4);
+                document.getElementById('ensembleEER').textContent = data.results.Ensemble.EER.toFixed(2) + '%';
+                document.getElementById('ensembleEERThreshold').textContent = data.results.Ensemble.EER_threshold.toFixed(2);
+            }
+            
+            // Scroll to evaluation section
+            document.getElementById('evaluationSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const messageEl = document.getElementById('toastMessage');
+            
+            const configs = {
+                success: { icon: 'fa-check-circle', color: 'text-green-500' },
+                error: { icon: 'fa-exclamation-circle', color: 'text-red-500' },
+                info: { icon: 'fa-info-circle', color: 'text-blue-500' },
+                warning: { icon: 'fa-exclamation-triangle', color: 'text-yellow-500' }
+            };
+            
+            const config = configs[type] || configs.info;
+            icon.className = `fas ${config.icon} text-2xl ${config.color}`;
+            messageEl.textContent = message;
+            
+            toast.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.transform = 'translateY(8rem)';
+            }, 3000);
         }
     </script>
 </body>

@@ -3,421 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fingerprint Registration</title>
+    <title>Fingerprint Registration System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            primary: '#0a0e27',
+                            secondary: '#151b3d',
+                            accent: '#1e2749',
+                            blue: '#2563eb'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-primary text-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-dark-secondary border-b border-dark-accent">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Fingerprint System</h1>
+                        <p class="text-xs text-gray-400">Registration Portal</p>
+                    </div>
+                </div>
+                <a href="/dashboard" class="flex items-center space-x-2 bg-dark-accent hover:bg-dark-accent/80 px-4 py-2 rounded-lg transition font-semibold">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Registration Page -->
+    <div class="container mx-auto px-6 py-12 max-w-2xl">
+        <div class="bg-dark-secondary rounded-2xl shadow-2xl p-8 border border-dark-accent">
+            <div class="text-center mb-8">
+                <div class="inline-block bg-blue-500/20 p-6 rounded-full mb-4">
+                    <i class="fas fa-fingerprint text-5xl text-blue-500"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-2">Fingerprint Registration</h2>
+                <p class="text-gray-400">Register your fingerprint to the system</p>
+            </div>
+
+            <!-- Step Indicator -->
+            <div class="flex justify-between mb-8 relative">
+                <div class="absolute top-5 left-0 right-0 h-0.5 bg-dark-accent"></div>
+                <div class="step-indicator flex-1 text-center relative z-10">
+                    <div class="step-circle active" id="stepCircle1">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <p class="text-xs mt-2 font-semibold" id="stepLabel1">User Info</p>
+                </div>
+                <div class="step-indicator flex-1 text-center relative z-10">
+                    <div class="step-circle" id="stepCircle2">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <p class="text-xs mt-2" id="stepLabel2">Scan Finger</p>
+                </div>
+                <div class="step-indicator flex-1 text-center relative z-10">
+                    <div class="step-circle" id="stepCircle3">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <p class="text-xs mt-2" id="stepLabel3">Complete</p>
+                </div>
+            </div>
+
+            <!-- Step 1: Form -->
+            <div id="step1" class="step-content">
+                <form id="dataForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-id-card mr-2 text-blue-500"></i>User ID
+                        </label>
+                        <input type="text" id="userId" 
+                               class="w-full px-4 py-3 bg-dark-accent border border-dark-accent rounded-lg focus:border-blue-500 focus:outline-none transition text-gray-100"
+                               placeholder="e.g., 001, 002, 003..." required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">
+                            <i class="fas fa-user mr-2 text-blue-500"></i>Full Name
+                        </label>
+                        <input type="text" id="userName" 
+                               class="w-full px-4 py-3 bg-dark-accent border border-dark-accent rounded-lg focus:border-blue-500 focus:outline-none transition text-gray-100"
+                               placeholder="Enter full name" required>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition flex items-center justify-center space-x-2">
+                        <span>Continue to Scan</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+                <div id="errorMessage" class="mt-4 hidden bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg"></div>
+            </div>
+
+            <!-- Step 2: Waiting -->
+            <div id="step2" class="step-content hidden text-center">
+                <div class="bg-dark-accent border-2 border-dashed border-blue-500 rounded-xl p-8">
+                    <div class="animate-pulse mb-6">
+                        <i class="fas fa-fingerprint text-7xl text-blue-500"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-2">Waiting for ESP32...</h3>
+                    <p class="text-gray-400 mb-6">Please scan your fingerprint on the ESP32 device</p>
+                    
+                    <div class="bg-dark-secondary p-4 rounded-lg mb-6">
+                        <p class="text-xs text-gray-400 mb-2">ESP32 Command:</p>
+                        <code class="text-green-400 font-mono text-lg" id="espCommand">ENROLL:---</code>
+                    </div>
+                    
+                    <div class="flex justify-center mb-4">
+                        <div class="animate-spin rounded-full h-12 w-12 border-4 border-dark-accent border-t-blue-500"></div>
+                    </div>
+                    
+                    <p class="text-sm text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Make sure ESP32 is connected and ready
+                    </p>
+                </div>
+                
+                <button onclick="cancelEnroll()" class="mt-6 w-full bg-dark-accent hover:bg-dark-accent/80 py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Cancel
+                </button>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="step3" class="step-content hidden text-center">
+                <div class="mb-6">
+                    <div class="inline-block bg-green-500/20 p-6 rounded-full mb-4 animate-bounce">
+                        <i class="fas fa-check-circle text-6xl text-green-500"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-green-500 mb-2">Registration Successful!</h3>
+                    <p class="text-gray-400">Fingerprint has been saved to the system</p>
+                </div>
+                
+                <div class="bg-dark-accent rounded-xl p-6 mb-6 text-left space-y-3">
+                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
+                        <span class="text-gray-400">User ID:</span>
+                        <span class="font-bold text-blue-400" id="successUserId">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
+                        <span class="text-gray-400">Name:</span>
+                        <span class="font-bold" id="successUserName">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
+                        <span class="text-gray-400">Registered:</span>
+                        <span class="text-sm" id="successRegistered">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
+                        <span class="text-gray-400">Enrolled:</span>
+                        <span class="text-sm" id="successEnrolled">-</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2">
+                        <span class="text-gray-400">Status:</span>
+                        <span class="text-green-500 font-semibold">
+                            <i class="fas fa-check-circle mr-1"></i>Enrolled
+                        </span>
+                    </div>
+                </div>
+
+                <button onclick="registerAnother()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-plus mr-2"></i>Register Another User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-dark-secondary border border-dark-accent rounded-lg shadow-xl p-4 transform translate-y-32 transition-transform duration-300 max-w-sm z-50">
+        <div class="flex items-center space-x-3">
+            <i id="toastIcon" class="fas fa-info-circle text-2xl"></i>
+            <p id="toastMessage" class="text-sm"></p>
+        </div>
+    </div>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
-            width: 100%;
-            padding: 40px;
-        }
-
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
-        /* Step Indicator */
-        .steps {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 40px;
-            position: relative;
-        }
-
-        .steps::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #e0e0e0;
-            z-index: 0;
-        }
-
-        .step {
-            flex: 1;
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
         .step-circle {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #e0e0e0;
-            color: #999;
+            background: #1e2749;
+            color: #6b7280;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            font-weight: bold;
+            margin: 0 auto;
+            font-size: 16px;
             transition: all 0.3s;
         }
-
-        .step.active .step-circle {
-            background: #667eea;
+        .step-circle.active {
+            background: #2563eb;
             color: white;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
         }
-
-        .step.completed .step-circle {
-            background: #28a745;
+        .step-circle.completed {
+            background: #10b981;
             color: white;
-        }
-
-        .step-label {
-            font-size: 12px;
-            color: #999;
-            font-weight: 600;
-        }
-
-        .step.active .step-label {
-            color: #667eea;
-        }
-
-        /* Step Content */
-        .step-content {
-            display: none;
-        }
-
-        .step-content.active {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: border 0.3s;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        /* Waiting Area */
-        .waiting-area {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 40px;
-            text-align: center;
-        }
-
-        .fingerprint-icon {
-            font-size: 80px;
-            margin-bottom: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .waiting-text {
-            font-size: 18px;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .waiting-subtext {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-
-        .esp-command {
-            background: #2d3748;
-            color: #48bb78;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 16px;
-            margin: 20px 0;
-            word-break: break-all;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Success Area */
-        .success-area {
-            text-align: center;
-        }
-
-        .success-icon {
-            font-size: 100px;
-            margin-bottom: 20px;
-        }
-
-        .success-title {
-            font-size: 24px;
-            color: #28a745;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .user-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            text-align: left;
-        }
-
-        .user-info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .user-info-row:last-child {
-            border-bottom: none;
-        }
-
-        .user-info-label {
-            color: #666;
-            font-weight: 600;
-        }
-
-        .user-info-value {
-            color: #333;
-            font-weight: bold;
-        }
-
-        /* Buttons */
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-            font-weight: 600;
-            display: none;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .link-box {
-            text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #f0f0f0;
-        }
-
-        .link-box a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔐 Fingerprint Registration</h1>
-        <p class="subtitle">Sistem Pendaftaran Sidik Jari</p>
-
-        <!-- Step Indicator -->
-        <div class="steps">
-            <div class="step active" id="step-indicator-1">
-                <div class="step-circle">1</div>
-                <div class="step-label">Data Diri</div>
-            </div>
-            <div class="step" id="step-indicator-2">
-                <div class="step-circle">2</div>
-                <div class="step-label">Scan Jari</div>
-            </div>
-            <div class="step" id="step-indicator-3">
-                <div class="step-circle">3</div>
-                <div class="step-label">Selesai</div>
-            </div>
-        </div>
-
-        <!-- Step 1: Form Data Diri -->
-        <div class="step-content active" id="step1">
-            <form id="dataForm">
-                <div class="form-group">
-                    <label for="userId">User ID</label>
-                    <input type="text" id="userId" placeholder="Contoh: 001, 002, 003..." required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="userName">Nama Lengkap</label>
-                    <input type="text" id="userName" placeholder="Masukkan nama lengkap" required>
-                </div>
-
-                <button type="submit" class="btn btn-primary">
-                    Lanjut ke Scan Fingerprint →
-                </button>
-            </form>
-            <div id="errorMessage" class="message error"></div>
-        </div>
-
-        <!-- Step 2: Waiting for ESP32 -->
-        <div class="step-content" id="step2">
-            <div class="waiting-area">
-                <div class="fingerprint-icon">👆</div>
-                <div class="waiting-text">Menunggu Data dari ESP32...</div>
-                <div class="waiting-subtext">Silakan jalankan perintah di ESP32 Serial Monitor:</div>
-                
-                <div class="esp-command" id="espCommand">ENROLL:---</div>
-                
-                <div class="spinner"></div>
-                
-                <p style="color: #666; font-size: 14px; margin-top: 20px;">
-                    💡 Pastikan ESP32 sudah terhubung dan scan fingerprint Anda
-                </p>
-            </div>
-            
-            <button class="btn btn-secondary" onclick="cancelEnroll()" style="margin-top: 20px;">
-                ← Kembali
-            </button>
-        </div>
-
-        <!-- Step 3: Success -->
-        <div class="step-content" id="step3">
-            <div class="success-area">
-                <div class="success-icon">✅</div>
-                <div class="success-title">Pendaftaran Berhasil!</div>
-                <p style="color: #666; margin-bottom: 20px;">Sidik jari telah tersimpan di sistem</p>
-                
-                <div class="user-info">
-                    <div class="user-info-row">
-                        <span class="user-info-label">User ID:</span>
-                        <span class="user-info-value" id="successUserId">-</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">Nama:</span>
-                        <span class="user-info-value" id="successUserName">-</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">Waktu Daftar:</span>
-                        <span class="user-info-value" id="successRegistered">-</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">Waktu Enrolled:</span>
-                        <span class="user-info-value" id="successEnrolled">-</span>
-                    </div>
-                    <div class="user-info-row">
-                        <span class="user-info-label">Status:</span>
-                        <span class="user-info-value" style="color: #28a745;">Enrolled ✓</span>
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" onclick="registerAnother()">
-                    ➕ Daftarkan User Lain
-                </button>
-            </div>
-        </div>
-
-        <div class="link-box">
-            <a href="/dashboard">📊 Lihat Dashboard</a>
-        </div>
-    </div>
 
     <script>
         let currentUserId = '';
@@ -425,7 +216,7 @@
         let registeredTime = null;
         let checkInterval = null;
 
-        // Step 1: Submit form data diri
+        // Registration Form
         document.getElementById('dataForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -447,23 +238,20 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Pindah ke step 2
                     goToStep(2);
                     document.getElementById('espCommand').textContent = `ENROLL:${currentUserId}`;
-                    
-                    // Mulai polling untuk cek apakah ESP sudah kirim data
                     startChecking();
+                    errorMsg.classList.add('hidden');
                 } else {
                     errorMsg.textContent = data.message;
-                    errorMsg.style.display = 'block';
+                    errorMsg.classList.remove('hidden');
                 }
             } catch (error) {
-                errorMsg.textContent = 'Terjadi kesalahan: ' + error.message;
-                errorMsg.style.display = 'block';
+                errorMsg.textContent = 'Error: ' + error.message;
+                errorMsg.classList.remove('hidden');
             }
         });
 
-        // Fungsi untuk polling cek status user
         function startChecking() {
             checkInterval = setInterval(async () => {
                 try {
@@ -471,34 +259,36 @@
                     const data = await response.json();
                     
                     if (data.status === 'enrolled') {
-                        // Template sudah diterima!
                         clearInterval(checkInterval);
                         showSuccess();
                     }
                 } catch (error) {
                     console.error('Error checking status:', error);
                 }
-            }, 2000); // Cek setiap 2 detik
+            }, 2000);
         }
 
         function goToStep(stepNumber) {
-            // Update indicator
-            document.querySelectorAll('.step').forEach((step, index) => {
-                step.classList.remove('active', 'completed');
-                if (index + 1 < stepNumber) {
-                    step.classList.add('completed');
-                } else if (index + 1 === stepNumber) {
-                    step.classList.add('active');
+            // Update circles
+            for (let i = 1; i <= 3; i++) {
+                const circle = document.getElementById(`stepCircle${i}`);
+                const label = document.getElementById(`stepLabel${i}`);
+                circle.classList.remove('active', 'completed');
+                label.classList.remove('font-semibold', 'text-blue-500');
+                
+                if (i < stepNumber) {
+                    circle.classList.add('completed');
+                } else if (i === stepNumber) {
+                    circle.classList.add('active');
+                    label.classList.add('font-semibold', 'text-blue-500');
                 }
-            });
+            }
 
             // Update content
-            document.querySelectorAll('.step-content').forEach((content, index) => {
-                content.classList.remove('active');
-                if (index + 1 === stepNumber) {
-                    content.classList.add('active');
-                }
-            });
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.add('hidden');
+            document.getElementById(`step${stepNumber}`).classList.remove('hidden');
         }
 
         function showSuccess() {
@@ -521,12 +311,8 @@
         }
 
         function cancelEnroll() {
-            if (checkInterval) {
-                clearInterval(checkInterval);
-            }
+            if (checkInterval) clearInterval(checkInterval);
             goToStep(1);
-            
-            // Hapus user dari database (rollback)
             fetch(`/api/delete_user/${currentUserId}`, { method: 'DELETE' })
                 .catch(err => console.error(err));
         }
@@ -534,16 +320,37 @@
         function registerAnother() {
             goToStep(1);
             document.getElementById('dataForm').reset();
-            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('errorMessage').classList.add('hidden');
             currentUserId = '';
             currentUserName = '';
         }
 
-        // Cleanup saat window ditutup
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const messageEl = document.getElementById('toastMessage');
+            
+            const configs = {
+                success: { icon: 'fa-check-circle', color: 'text-green-500' },
+                error: { icon: 'fa-exclamation-circle', color: 'text-red-500' },
+                info: { icon: 'fa-info-circle', color: 'text-blue-500' },
+                warning: { icon: 'fa-exclamation-triangle', color: 'text-yellow-500' }
+            };
+            
+            const config = configs[type] || configs.info;
+            icon.className = `fas ${config.icon} text-2xl ${config.color}`;
+            messageEl.textContent = message;
+            
+            toast.style.transform = 'translateY(0)';
+            
+            setTimeout(() => {
+                toast.style.transform = 'translateY(8rem)';
+            }, 3000);
+        }
+
+        // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
-            if (checkInterval) {
-                clearInterval(checkInterval);
-            }
+            if (checkInterval) clearInterval(checkInterval);
         });
     </script>
 </body>
