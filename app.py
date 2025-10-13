@@ -28,8 +28,6 @@ def init_db():
                     user_id TEXT,
                     name TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    confidence INTEGER,
-                    sensor_id INTEGER DEFAULT 1,
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )''')
     
@@ -77,7 +75,7 @@ def dashboard():
     users = c.fetchall()
     
     # Get recent attendance
-    c.execute("""SELECT user_id, name, timestamp, confidence, sensor_id 
+    c.execute("""SELECT user_id, name, timestamp 
                  FROM attendance 
                  ORDER BY timestamp DESC 
                  LIMIT 10""")
@@ -256,52 +254,72 @@ def save_template():
             "message": f"Server error: {str(e)}"
         }), 500
 
-# 4. Attendance dari Sensor 2 (matching internal sensor)
-@app.route('/api/attendance_sensor2', methods=['POST'])
-def attendance_sensor2():
+# 3. Verifikasi fingerprint dari ESP32
+@app.route('/api/verify_template', methods=['POST'])
+def verify_template():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
-        confidence = data.get('confidence', 0)
+        new_template = data.get('template')
         
-        if not user_id:
-            return jsonify({"status": "error", "message": "user_id wajib diisi"}), 400
+        if not new_template:
+            return jsonify({"status": "error", "message": "template wajib diisi"}), 400
         
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Ambil nama user
-        c.execute("SELECT name FROM users WHERE user_id=? AND status='enrolled'", (user_id,))
-        user = c.fetchone()
+        # Ambil semua user yang sudah enrolled
+        c.execute("SELECT user_id, name, template FROM users WHERE status='enrolled'")
+        users = c.fetchall()
         
-        if not user:
+        if not users:
+            conn.close()
+            return jsonify({"status": "no_match", "message": "Belum ada user yang terdaftar"})
+        
+        # Bandingkan template (simple matching)
+        best_match = None
+        best_similarity = 0
+        
+        for user in users:
+            user_id, name, stored_template = user
+            
+            # Hitung similarity (persentase karakter yang sama)
+            if len(stored_template) == len(new_template):
+                matches = sum(a == b for a, b in zip(stored_template, new_template))
+                similarity = matches / len(stored_template)
+                
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_match = (user_id, name)
+        
+        # Threshold 85% similarity
+        if best_match and best_similarity > 0.70:
+            user_id, name = best_match
+            
+            # Catat attendance
+            c.execute("INSERT INTO attendance (user_id, name) VALUES (?, ?)", 
+                     (user_id, name))
+            conn.commit()
+            conn.close()
+            
+            return jsonify({
+                "status": "match",
+                "user_id": user_id,
+                "name": name,
+                "similarity": round(best_similarity * 100, 2),
+                "message": f"✅ Selamat datang, {name}!"
+            })
+        else:
             conn.close()
             return jsonify({
-                "status": "error",
-                "message": f"User ID {user_id} tidak ditemukan atau belum enrolled"
-            }), 404
-        
-        user_name = user[0]
-        
-        # Catat attendance dengan sensor_id = 2
-        c.execute("""INSERT INTO attendance (user_id, name, confidence, sensor_id) 
-                     VALUES (?, ?, ?, 2)""", 
-                  (user_id, user_name, confidence))
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            "status": "success",
-            "message": f"✅ Selamat datang, {user_name}!",
-            "user_id": user_id,
-            "name": user_name,
-            "confidence": confidence
-        })
+                "status": "no_match",
+                "message": "❌ Sidik jari tidak terdaftar",
+                "best_similarity": round(best_similarity * 100, 2) if best_similarity > 0 else 0
+            })
         
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 5. Delete user (untuk cancel enrollment)
+# 4. Delete user (untuk cancel enrollment)
 @app.route('/api/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
     try:
@@ -315,12 +333,12 @@ def delete_user(user_id):
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# 6. Get all users (untuk dashboard dan sync ESP32)
+# 5. Get all users (untuk dashboard)
 @app.route('/api/users', methods=['GET'])
 def get_users():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("SELECT user_id, name, status, registered_at, enrolled_at, template FROM users WHERE status='enrolled'")
+    c.execute("SELECT user_id, name, status, registered_at, enrolled_at FROM users")
     users = c.fetchall()
     conn.close()
     
@@ -331,18 +349,17 @@ def get_users():
             "name": user[1],
             "status": user[2],
             "registered_at": user[3],
-            "enrolled_at": user[4],
-            "template": user[5]  # Include template untuk sync
+            "enrolled_at": user[4]
         })
     
     return jsonify({"status": "success", "users": user_list})
 
-# 7. Get attendance logs
+# 5. Get attendance logs
 @app.route('/api/attendance', methods=['GET'])
 def get_attendance():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("""SELECT user_id, name, timestamp, confidence, sensor_id 
+    c.execute("""SELECT user_id, name, timestamp 
                  FROM attendance 
                  ORDER BY timestamp DESC 
                  LIMIT 50""")
@@ -354,9 +371,7 @@ def get_attendance():
         attendance_list.append({
             "user_id": log[0],
             "name": log[1],
-            "timestamp": log[2],
-            "confidence": log[3],
-            "sensor_id": log[4]
+            "timestamp": log[2]
         })
     
     return jsonify({"status": "success", "attendance": attendance_list})
