@@ -17,10 +17,10 @@ CORS(app)
 ensemble_model = None
 model_path = 'ensemble_model.pkl'
 
-# KONFIGURASI THRESHOLD - Disesuaikan dengan kemampuan sensor
-ENSEMBLE_THRESHOLD = 75.0      # Turun dari 85 → 75 (lebih realistis)
-HAMMING_MIN_THRESHOLD = 65.0   # Turun dari 75 → 65 (sensor low-quality)
-COSINE_MIN_THRESHOLD = 60.0    # Turun dari 70 → 60 (sensor low-quality)
+# KONFIGURASI THRESHOLD - Balance antara usability dan security
+ENSEMBLE_THRESHOLD = 80.0      # Naikkan dari 75 → 80 (reduce false positive)
+HAMMING_MIN_THRESHOLD = 70.0   # Naikkan dari 65 → 70 (lebih ketat)
+COSINE_MIN_THRESHOLD = 65.0    # Naikkan dari 60 → 65 (lebih ketat)
 MIN_TEMPLATE_LENGTH = 512
 MIN_QUALITY_THRESHOLD = 0.20   # Sesuaikan dengan kemampuan sensor (20%)
 
@@ -192,10 +192,15 @@ def multi_stage_verification(hamming_score, cosine_score, ensemble_score):
     if ensemble_score < ENSEMBLE_THRESHOLD:
         return False, f"Ensemble score terlalu rendah ({ensemble_score:.2f}% < {ENSEMBLE_THRESHOLD}%)"
     
-    # Stage 3: Consistency check (kedua metrik harus konsisten)
+    # Stage 3: Consistency check (DIPERKETAT untuk reduce false positive)
     score_diff = abs(hamming_score - cosine_score)
-    if score_diff > 25.0:  # Longgarkan dari 20% → 25% untuk sensor low-quality
+    if score_diff > 15.0:  # Perketat dari 25% → 15% untuk deteksi anomali
         return False, f"Skor tidak konsisten (selisih {score_diff:.2f}%)"
+    
+    # Stage 4: TAMBAHAN - Minimal average score
+    avg_score = (hamming_score + cosine_score) / 2
+    if avg_score < 68.0:  # Rata-rata harus > 68%
+        return False, f"Average score terlalu rendah ({avg_score:.2f}% < 68%)"
     
     return True, "Passed all checks"
 
