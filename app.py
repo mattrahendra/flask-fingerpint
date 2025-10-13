@@ -123,23 +123,54 @@ def check_status(user_id):
 @app.route('/api/save_template', methods=['POST'])
 def save_template():
     try:
-        data = request.get_json()
-        user_id = data.get('user_id')
-        template = data.get('template')
+        # Debug: Print raw data
+        raw_data = request.get_data(as_text=True)
+        print(f"[DEBUG] Raw data received: {raw_data[:100]}...")  # Print first 100 chars
         
-        if not user_id or not template:
-            return jsonify({"status": "error", "message": "user_id dan template wajib diisi"}), 400
+        data = request.get_json()
+        print(f"[DEBUG] Parsed JSON keys: {list(data.keys()) if data else 'None'}")
+        
+        # Validasi input - bisa "user_id" atau "id"
+        user_id = data.get('user_id') or data.get('id')
+        template = data.get('template') or data.get('fingerprint_template')
+        
+        print(f"[DEBUG] user_id: {user_id}, template length: {len(template) if template else 0}")
+        
+        if not user_id:
+            return jsonify({
+                "status": "error", 
+                "message": "user_id wajib diisi"
+            }), 400
+            
+        if not template:
+            return jsonify({
+                "status": "error", 
+                "message": "template wajib diisi"
+            }), 400
         
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
         # Cek apakah user ada
-        c.execute("SELECT name FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
         user = c.fetchone()
         
         if not user:
             conn.close()
-            return jsonify({"status": "error", "message": "User ID tidak ditemukan. Daftar dulu di web!"}), 404
+            return jsonify({
+                "status": "error", 
+                "message": f"User ID {user_id} tidak ditemukan. Daftar dulu di web!"
+            }), 404
+        
+        user_name, current_status = user
+        
+        # Cek apakah sudah enrolled sebelumnya
+        if current_status == 'enrolled':
+            conn.close()
+            return jsonify({
+                "status": "warning",
+                "message": f"User {user_name} sudah enrolled sebelumnya"
+            })
         
         # Update template dan status
         c.execute("""UPDATE users 
@@ -152,12 +183,16 @@ def save_template():
         
         return jsonify({
             "status": "success",
-            "message": f"Template untuk {user[0]} berhasil disimpan!",
-            "user_id": user_id
-        })
+            "message": f"✅ Template untuk {user_name} berhasil disimpan!",
+            "user_id": user_id,
+            "name": user_name
+        }), 200
         
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({
+            "status": "error", 
+            "message": f"Server error: {str(e)}"
+        }), 500
 
 # 3. Verifikasi fingerprint dari ESP32
 @app.route('/api/verify_template', methods=['POST'])
