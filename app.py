@@ -292,7 +292,7 @@ def verify_template():
                     best_match = (user_id, name)
         
         # Threshold 85% similarity
-        if best_match and best_similarity > 0.85:
+        if best_match and best_similarity > 0.70:
             user_id, name = best_match
             
             # Catat attendance
