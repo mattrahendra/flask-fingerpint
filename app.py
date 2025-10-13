@@ -17,11 +17,15 @@ CORS(app)
 ensemble_model = None
 model_path = 'ensemble_model.pkl'
 
-# KONFIGURASI THRESHOLD YANG LEBIH KETAT
-ENSEMBLE_THRESHOLD = 85.0  # Dinaikkan dari 70 ke 85
-HAMMING_MIN_THRESHOLD = 75.0  # Threshold minimum untuk Hamming
-COSINE_MIN_THRESHOLD = 70.0   # Threshold minimum untuk Cosine
-MIN_TEMPLATE_LENGTH = 512     # Minimum panjang template yang valid
+# KONFIGURASI THRESHOLD YANG LEBIH REALISTIS
+ENSEMBLE_THRESHOLD = 70.0
+HAMMING_MIN_THRESHOLD = 60.0
+COSINE_MIN_THRESHOLD = 50.0
+MIN_TEMPLATE_LENGTH = 512
+MIN_QUALITY_THRESHOLD = 0.25 # Turunkan dari 0.25 ke 0.15 (15%)
+
+# Multi-template configuration
+REQUIRED_TEMPLATES = 3  # Jumlah template yang diperlukan per user
 
 # Anti-duplicate check window (dalam detik)
 DUPLICATE_CHECK_WINDOW = 10
@@ -31,15 +35,24 @@ def init_db():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
     
-    # Tabel users
+    # Tabel users - UPDATED untuk multi-template
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
-                    template TEXT,
                     registered_at TIMESTAMP,
-                    enrolled_at TIMESTAMP,
                     status TEXT DEFAULT 'pending',
-                    template_quality REAL
+                    templates_count INTEGER DEFAULT 0
+                )''')
+    
+    # Tabel baru untuk menyimpan multiple templates per user
+    c.execute('''CREATE TABLE IF NOT EXISTS user_templates (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL,
+                    template TEXT NOT NULL,
+                    template_quality REAL,
+                    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    template_index INTEGER,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                 )''')
     
     # Tabel attendance logs
@@ -52,6 +65,7 @@ def init_db():
                     hamming_score REAL,
                     cosine_score REAL,
                     ensemble_score REAL,
+                    matched_template_id INTEGER,
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )''')
     
@@ -83,9 +97,9 @@ def hex_to_bytes(hex_str):
         return None
 
 def validate_template(template_hex):
-    """Validate template quality"""
+    """Validate template quality dengan threshold yang lebih realistis"""
     if not template_hex or len(template_hex) < MIN_TEMPLATE_LENGTH:
-        return False, "Template terlalu pendek"
+        return False, f"Template terlalu pendek ({len(template_hex)} < {MIN_TEMPLATE_LENGTH})"
     
     try:
         template_bytes = hex_to_bytes(template_hex)
@@ -98,10 +112,12 @@ def validate_template(template_hex):
         
         # Check entropy - template yang bagus harus memiliki variasi
         unique_ratio = len(np.unique(template_bytes)) / len(template_bytes)
-        if unique_ratio < 0.25:  # Turunkan dari 0.3 ke 0.25 (25%)
-            return False, f"Template quality buruk (variasi rendah: {unique_ratio:.2%})"
         
-        return True, "OK"
+        # THRESHOLD DITURUNKAN ke 15%
+        if unique_ratio < MIN_QUALITY_THRESHOLD:
+            return False, f"Template quality buruk (variasi: {unique_ratio:.2%}, minimum: {MIN_QUALITY_THRESHOLD:.0%})"
+        
+        return True, f"OK (quality: {unique_ratio:.2%})"
     except Exception as e:
         return False, f"Error validasi: {str(e)}"
 
@@ -214,8 +230,8 @@ def train_ensemble_model():
     logs = c.fetchall()
     conn.close()
     
-    if len(logs) < 30:  # Naikkan minimum data
-        print(f"⚠️  Not enough data for training ({len(logs)} samples). Need at least 30.")
+    if len(logs) < 30:
+        print(f"⚠️ Not enough data for training ({len(logs)} samples). Need at least 30.")
         return False
     
     X = np.array([[log[0], log[1]] for log in logs])
@@ -223,15 +239,15 @@ def train_ensemble_model():
     
     # Check if we have both classes
     if len(np.unique(y)) < 2:
-        print("⚠️  Need both genuine and impostor samples for training")
+        print("⚠️ Need both genuine and impostor samples for training")
         return False
     
     # Train model with balanced class weights to reduce false positives
     ensemble_model = LogisticRegression(
         random_state=42, 
         max_iter=1000,
-        class_weight='balanced',  # Penting untuk handle imbalanced data
-        C=0.5  # Regularization lebih kuat untuk reduce overfitting
+        class_weight='balanced',
+        C=0.5
     )
     ensemble_model.fit(X, y)
     
@@ -258,12 +274,12 @@ def load_ensemble_model():
 def predict_ensemble(hamming_score, cosine_score):
     """Predict match probability using ensemble"""
     if ensemble_model is None:
-        # Fallback: weighted average dengan bias lebih rendah
+        # Fallback: weighted average
         return (hamming_score * 0.55 + cosine_score * 0.45)
     
     features = np.array([[hamming_score, cosine_score]])
-    prob = ensemble_model.predict_proba(features)[0][1]  # Probability of class 1 (genuine)
-    return float(prob * 100.0)  # Convert to percentage
+    prob = ensemble_model.predict_proba(features)[0][1]
+    return float(prob * 100.0)
 
 # Load model on startup
 load_ensemble_model()
@@ -297,12 +313,14 @@ def test_endpoint():
         return jsonify({
             "status": "success",
             "message": "GET test OK",
-            "server": "Flask with Enhanced Ensemble Matcher",
+            "server": "Flask with Multi-Template Enrollment",
             "timestamp": datetime.now().isoformat(),
-            "thresholds": {
-                "ensemble": ENSEMBLE_THRESHOLD,
-                "hamming": HAMMING_MIN_THRESHOLD,
-                "cosine": COSINE_MIN_THRESHOLD
+            "config": {
+                "required_templates": REQUIRED_TEMPLATES,
+                "ensemble_threshold": ENSEMBLE_THRESHOLD,
+                "hamming_threshold": HAMMING_MIN_THRESHOLD,
+                "cosine_threshold": COSINE_MIN_THRESHOLD,
+                "min_quality": MIN_QUALITY_THRESHOLD
             }
         })
 
@@ -326,8 +344,8 @@ def register_user():
             conn.close()
             return jsonify({"status": "error", "message": "User ID sudah terdaftar"}), 400
         
-        c.execute("""INSERT INTO users (user_id, name, status, registered_at) 
-                     VALUES (?, ?, 'pending', ?)""", 
+        c.execute("""INSERT INTO users (user_id, name, status, registered_at, templates_count) 
+                     VALUES (?, ?, 'pending', ?, 0)""", 
                   (user_id, name, datetime.now()))
         
         conn.commit()
@@ -335,8 +353,9 @@ def register_user():
         
         return jsonify({
             "status": "success",
-            "message": f"User {name} berhasil didaftarkan. Silakan scan fingerprint di ESP32.",
-            "user_id": user_id
+            "message": f"User {name} berhasil didaftarkan. Silakan scan {REQUIRED_TEMPLATES} kali untuk enrollment.",
+            "user_id": user_id,
+            "required_templates": REQUIRED_TEMPLATES
         })
         
     except Exception as e:
@@ -348,20 +367,25 @@ def check_status(user_id):
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("SELECT status FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT status, templates_count FROM users WHERE user_id=?", (user_id,))
         user = c.fetchone()
         conn.close()
         
         if not user:
             return jsonify({"status": "not_found"}), 404
         
-        return jsonify({"status": user[0]})
+        return jsonify({
+            "status": user[0],
+            "templates_count": user[1],
+            "required_templates": REQUIRED_TEMPLATES
+        })
         
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/save_template', methods=['POST'])
 def save_template():
+    """Save template dengan support multi-template enrollment"""
     try:
         if not request.data:
             return jsonify({"status": "error", "message": "No data received"}), 400
@@ -384,51 +408,83 @@ def save_template():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT name, status, templates_count FROM users WHERE user_id=?", (user_id,))
         user = c.fetchone()
         
         if not user:
             conn.close()
             return jsonify({
                 "status": "error", 
-                "message": f"User ID '{user_id}' tidak ditemukan"
+                "message": f"User ID '{user_id}' tidak ditemukan. Silakan register terlebih dahulu."
             }), 404
         
-        user_name, current_status = user
+        user_name, current_status, templates_count = user
         
-        if current_status == 'enrolled':
+        # Check if already fully enrolled
+        if current_status == 'enrolled' and templates_count >= REQUIRED_TEMPLATES:
             conn.close()
             return jsonify({
                 "status": "warning",
-                "message": f"User {user_name} sudah enrolled sebelumnya"
+                "message": f"User {user_name} sudah fully enrolled dengan {templates_count} template"
             }), 200
         
         # Calculate template quality
         template_bytes = hex_to_bytes(template)
         quality = len(np.unique(template_bytes)) / len(template_bytes)
         
+        # Save template
+        new_index = templates_count + 1
+        c.execute("""INSERT INTO user_templates 
+                     (user_id, template, template_quality, template_index) 
+                     VALUES (?, ?, ?, ?)""", 
+                  (user_id, template, quality, new_index))
+        
+        # Update user templates count
         c.execute("""UPDATE users 
-                     SET template=?, status='enrolled', enrolled_at=?, template_quality=? 
+                     SET templates_count=?, status=? 
                      WHERE user_id=?""", 
-                  (template, datetime.now(), quality, user_id))
+                  (new_index, 
+                   'enrolled' if new_index >= REQUIRED_TEMPLATES else 'enrolling',
+                   user_id))
         
         conn.commit()
         conn.close()
         
-        return jsonify({
-            "status": "success",
-            "message": f"Template untuk {user_name} berhasil disimpan!",
-            "user_id": user_id,
-            "name": user_name,
-            "quality": round(quality * 100, 2)
-        }), 200
+        remaining = REQUIRED_TEMPLATES - new_index
+        
+        if remaining > 0:
+            return jsonify({
+                "status": "partial",
+                "message": f"✅ Template {new_index}/{REQUIRED_TEMPLATES} untuk {user_name} tersimpan! Scan {remaining} kali lagi.",
+                "user_id": user_id,
+                "name": user_name,
+                "quality": round(quality * 100, 2),
+                "templates_count": new_index,
+                "required_templates": REQUIRED_TEMPLATES,
+                "remaining": remaining
+            }), 200
+        else:
+            return jsonify({
+                "status": "success",
+                "message": f"🎉 Enrollment {user_name} SELESAI! Semua {REQUIRED_TEMPLATES} template tersimpan.",
+                "user_id": user_id,
+                "name": user_name,
+                "quality": round(quality * 100, 2),
+                "templates_count": new_index,
+                "required_templates": REQUIRED_TEMPLATES
+            }), 200
         
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        import traceback
+        return jsonify({
+            "status": "error", 
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route('/api/verify_template', methods=['POST'])
 def verify_template():
-    """Verify fingerprint using enhanced ensemble matching"""
+    """Verify fingerprint menggunakan SEMUA template yang tersimpan"""
     try:
         data = request.get_json()
         scanned_template = data.get('template')
@@ -447,25 +503,32 @@ def verify_template():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Get all enrolled users
-        c.execute("SELECT user_id, name, template FROM users WHERE status='enrolled'")
-        users = c.fetchall()
+        # Get all enrolled users with their templates
+        c.execute("""SELECT u.user_id, u.name, ut.id, ut.template 
+                     FROM users u
+                     JOIN user_templates ut ON u.user_id = ut.user_id
+                     WHERE u.status='enrolled'""")
+        templates = c.fetchall()
         
-        if not users:
+        if not templates:
             conn.close()
-            return jsonify({"status": "no_match", "message": "Belum ada user yang terdaftar"})
+            return jsonify({
+                "status": "no_match", 
+                "message": "Belum ada user yang fully enrolled"
+            })
         
-        # Compare with all enrolled users
+        # Compare with ALL stored templates
         best_match = None
         best_ensemble_score = 0.0
         best_hamming = 0.0
         best_cosine = 0.0
         best_passed_checks = False
+        best_template_id = None
         
-        results = []
+        user_best_scores = {}  # Track best score per user
         
-        for user in users:
-            user_id, name, stored_template = user
+        for template_data in templates:
+            user_id, name, template_id, stored_template = template_data
             
             # Calculate similarities
             hamming = hamming_similarity(stored_template, scanned_template)
@@ -475,23 +538,39 @@ def verify_template():
             # Multi-stage verification
             passed_checks, check_reason = multi_stage_verification(hamming, cosine, ensemble)
             
-            results.append({
-                'user_id': user_id,
-                'name': name,
-                'hamming': round(hamming, 2),
-                'cosine': round(cosine, 2),
-                'ensemble': round(ensemble, 2),
-                'passed_checks': passed_checks,
-                'check_reason': check_reason
-            })
+            # Track best score for this user (across all their templates)
+            if user_id not in user_best_scores or ensemble > user_best_scores[user_id]['ensemble']:
+                user_best_scores[user_id] = {
+                    'name': name,
+                    'hamming': hamming,
+                    'cosine': cosine,
+                    'ensemble': ensemble,
+                    'passed_checks': passed_checks,
+                    'check_reason': check_reason,
+                    'template_id': template_id
+                }
             
-            # Update best match only if passed all checks
+            # Update global best match
             if passed_checks and ensemble > best_ensemble_score:
                 best_ensemble_score = ensemble
                 best_hamming = hamming
                 best_cosine = cosine
                 best_match = (user_id, name)
                 best_passed_checks = True
+                best_template_id = template_id
+        
+        # Prepare results per user
+        results = []
+        for uid, scores in user_best_scores.items():
+            results.append({
+                'user_id': uid,
+                'name': scores['name'],
+                'hamming': round(scores['hamming'], 2),
+                'cosine': round(scores['cosine'], 2),
+                'ensemble': round(scores['ensemble'], 2),
+                'passed_checks': scores['passed_checks'],
+                'check_reason': scores['check_reason']
+            })
         
         if best_match and best_passed_checks:
             user_id, name = best_match
@@ -502,7 +581,7 @@ def verify_template():
                 conn.close()
                 return jsonify({
                     "status": "duplicate",
-                    "message": f"⚠️  {name} sudah absen baru-baru ini ({last_time})",
+                    "message": f"⚠️ {name} sudah absen baru-baru ini ({last_time})",
                     "user_id": user_id,
                     "name": name,
                     "last_attendance": last_time
@@ -516,9 +595,9 @@ def verify_template():
             
             # Record attendance
             c.execute("""INSERT INTO attendance 
-                        (user_id, name, confidence, hamming_score, cosine_score, ensemble_score) 
-                        VALUES (?, ?, ?, ?, ?, ?)""", 
-                     (user_id, name, best_ensemble_score, best_hamming, best_cosine, best_ensemble_score))
+                        (user_id, name, confidence, hamming_score, cosine_score, ensemble_score, matched_template_id) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?)""", 
+                     (user_id, name, best_ensemble_score, best_hamming, best_cosine, best_ensemble_score, best_template_id))
             
             conn.commit()
             conn.close()
@@ -532,6 +611,7 @@ def verify_template():
                     "cosine": round(best_cosine, 2),
                     "ensemble": round(best_ensemble_score, 2)
                 },
+                "matched_template_id": best_template_id,
                 "all_results": results,
                 "message": f"✅ Selamat datang, {name}!"
             })
@@ -570,7 +650,7 @@ def verify_template():
 
 @app.route('/api/record_attendance', methods=['POST'])
 def record_attendance():
-    """Simplified attendance recording (ESP32 already verified)"""
+    """Simplified attendance recording"""
     try:
         data = request.get_json()
         user_id = data.get('user_id')
@@ -602,35 +682,51 @@ def record_attendance():
 
 @app.route('/api/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
+    """Delete user dan semua templatenya"""
     try:
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
+        
+        # Delete templates first (foreign key cascade should handle this, but explicit is better)
+        c.execute("DELETE FROM user_templates WHERE user_id=?", (user_id,))
         c.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+        
         conn.commit()
         conn.close()
         
-        return jsonify({"status": "success", "message": "User deleted"})
+        return jsonify({"status": "success", "message": "User and all templates deleted"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/users', methods=['GET'])
 def get_users():
+    """Get all users dengan info template mereka"""
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("SELECT user_id, name, status, registered_at, enrolled_at, template, template_quality FROM users")
+    
+    c.execute("""SELECT u.user_id, u.name, u.status, u.registered_at, u.templates_count,
+                        GROUP_CONCAT(ut.template_quality) as qualities
+                 FROM users u
+                 LEFT JOIN user_templates ut ON u.user_id = ut.user_id
+                 GROUP BY u.user_id""")
     users = c.fetchall()
     conn.close()
     
     user_list = []
     for user in users:
+        qualities = []
+        if user[5]:  # if qualities exist
+            qualities = [round(float(q) * 100, 2) for q in user[5].split(',')]
+        
         user_list.append({
             "user_id": user[0],
             "name": user[1],
             "status": user[2],
             "registered_at": user[3],
-            "enrolled_at": user[4],
-            "template": user[5],
-            "quality": round(user[6] * 100, 2) if user[6] else None
+            "templates_count": user[4],
+            "required_templates": REQUIRED_TEMPLATES,
+            "template_qualities": qualities,
+            "avg_quality": round(sum(qualities) / len(qualities), 2) if qualities else None
         })
     
     return jsonify({"status": "success", "users": user_list})
@@ -639,7 +735,7 @@ def get_users():
 def get_attendance():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
-    c.execute("""SELECT user_id, name, timestamp, confidence, hamming_score, cosine_score, ensemble_score
+    c.execute("""SELECT user_id, name, timestamp, confidence, hamming_score, cosine_score, ensemble_score, matched_template_id
                  FROM attendance 
                  ORDER BY timestamp DESC 
                  LIMIT 50""")
@@ -655,7 +751,8 @@ def get_attendance():
             "confidence": log[3],
             "hamming_score": log[4],
             "cosine_score": log[5],
-            "ensemble_score": log[6]
+            "ensemble_score": log[6],
+            "matched_template_id": log[7]
         })
     
     return jsonify({"status": "success", "attendance": attendance_list})
@@ -759,13 +856,54 @@ def get_config():
     return jsonify({
         "status": "success",
         "config": {
+            "REQUIRED_TEMPLATES": REQUIRED_TEMPLATES,
             "ENSEMBLE_THRESHOLD": ENSEMBLE_THRESHOLD,
             "HAMMING_MIN_THRESHOLD": HAMMING_MIN_THRESHOLD,
             "COSINE_MIN_THRESHOLD": COSINE_MIN_THRESHOLD,
             "MIN_TEMPLATE_LENGTH": MIN_TEMPLATE_LENGTH,
+            "MIN_QUALITY_THRESHOLD": MIN_QUALITY_THRESHOLD,
             "DUPLICATE_CHECK_WINDOW": DUPLICATE_CHECK_WINDOW
         }
     })
+
+@app.route('/api/user/<user_id>/templates', methods=['GET'])
+def get_user_templates(user_id):
+    """Get all templates for a specific user"""
+    try:
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        c.execute("""SELECT id, template_quality, enrolled_at, template_index 
+                     FROM user_templates 
+                     WHERE user_id=? 
+                     ORDER BY template_index""", (user_id,))
+        templates = c.fetchall()
+        conn.close()
+        
+        if not templates:
+            return jsonify({
+                "status": "error",
+                "message": "User not found or has no templates"
+            }), 404
+        
+        template_list = []
+        for t in templates:
+            template_list.append({
+                "id": t[0],
+                "quality": round(t[1] * 100, 2),
+                "enrolled_at": t[2],
+                "index": t[3]
+            })
+        
+        return jsonify({
+            "status": "success",
+            "user_id": user_id,
+            "templates": template_list,
+            "total": len(template_list)
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
