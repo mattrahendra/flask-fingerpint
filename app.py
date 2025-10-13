@@ -41,6 +41,30 @@ init_db()
 def home():
     return render_template('index.html')
 
+# Test endpoint untuk ESP32
+@app.route('/api/test', methods=['POST', 'GET'])
+def test_endpoint():
+    if request.method == 'POST':
+        try:
+            data = request.get_json(force=True)
+            return jsonify({
+                "status": "success",
+                "message": "POST test OK",
+                "received": data
+            })
+        except:
+            return jsonify({
+                "status": "error",
+                "message": "JSON parse failed"
+            }), 400
+    else:
+        return jsonify({
+            "status": "success",
+            "message": "GET test OK",
+            "server": "Flask",
+            "timestamp": datetime.now().isoformat()
+        })
+
 @app.route('/dashboard')
 def dashboard():
     conn = sqlite3.connect('fingerprint.db')
@@ -123,29 +147,59 @@ def check_status(user_id):
 @app.route('/api/save_template', methods=['POST'])
 def save_template():
     try:
-        # Debug: Print raw data
-        raw_data = request.get_data(as_text=True)
-        print(f"[DEBUG] Raw data received: {raw_data[:100]}...")  # Print first 100 chars
-        
-        data = request.get_json()
-        print(f"[DEBUG] Parsed JSON keys: {list(data.keys()) if data else 'None'}")
-        
-        # Validasi input - bisa "user_id" atau "id"
-        user_id = data.get('user_id') or data.get('id')
-        template = data.get('template') or data.get('fingerprint_template')
-        
-        print(f"[DEBUG] user_id: {user_id}, template length: {len(template) if template else 0}")
-        
-        if not user_id:
+        # Cek apakah ada data
+        if not request.data:
             return jsonify({
                 "status": "error", 
-                "message": "user_id wajib diisi"
+                "message": "No data received"
+            }), 400
+        
+        # Debug: Print raw data
+        raw_data = request.get_data(as_text=True)
+        print(f"[DEBUG] Raw data: {raw_data[:200]}")
+        
+        # Parse JSON dengan error handling
+        try:
+            data = request.get_json(force=True)
+        except Exception as json_error:
+            print(f"[ERROR] JSON parse error: {str(json_error)}")
+            return jsonify({
+                "status": "error", 
+                "message": f"Invalid JSON: {str(json_error)}"
+            }), 400
+        
+        if not data:
+            return jsonify({
+                "status": "error", 
+                "message": "Empty JSON data"
+            }), 400
+        
+        print(f"[DEBUG] JSON keys: {list(data.keys())}")
+        
+        # Validasi input - fleksibel dengan berbagai nama field
+        user_id = data.get('user_id') or data.get('id') or data.get('userId')
+        template = data.get('template') or data.get('fingerprint_template')
+        
+        print(f"[DEBUG] Extracted - user_id: '{user_id}', template length: {len(template) if template else 0}")
+        
+        if not user_id:
+            available_keys = ', '.join(data.keys())
+            return jsonify({
+                "status": "error", 
+                "message": f"user_id wajib diisi. Available keys: {available_keys}"
             }), 400
             
         if not template:
             return jsonify({
                 "status": "error", 
                 "message": "template wajib diisi"
+            }), 400
+        
+        # Validasi template length
+        if len(template) < 100:
+            return jsonify({
+                "status": "error",
+                "message": f"Template terlalu pendek ({len(template)} chars). Expected ~1024 chars"
             }), 400
         
         conn = sqlite3.connect('fingerprint.db')
@@ -159,7 +213,7 @@ def save_template():
             conn.close()
             return jsonify({
                 "status": "error", 
-                "message": f"User ID {user_id} tidak ditemukan. Daftar dulu di web!"
+                "message": f"User ID '{user_id}' tidak ditemukan. Daftar dulu di web!"
             }), 404
         
         user_name, current_status = user
@@ -170,7 +224,7 @@ def save_template():
             return jsonify({
                 "status": "warning",
                 "message": f"User {user_name} sudah enrolled sebelumnya"
-            })
+            }), 200
         
         # Update template dan status
         c.execute("""UPDATE users 
@@ -178,17 +232,23 @@ def save_template():
                      WHERE user_id=?""", 
                   (template, datetime.now(), user_id))
         
+        affected = c.rowcount
         conn.commit()
         conn.close()
         
+        print(f"[SUCCESS] Updated {affected} row(s) for user_id: {user_id}")
+        
         return jsonify({
             "status": "success",
-            "message": f"✅ Template untuk {user_name} berhasil disimpan!",
+            "message": f"Template untuk {user_name} berhasil disimpan!",
             "user_id": user_id,
             "name": user_name
         }), 200
         
     except Exception as e:
+        print(f"[ERROR] Exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "status": "error", 
             "message": f"Server error: {str(e)}"
