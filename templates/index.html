@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fingerprint System</title>
+    <title>Fingerprint Registration</title>
     <style>
         * {
             margin: 0;
@@ -25,7 +25,7 @@
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
+            max-width: 600px;
             width: 100%;
             padding: 40px;
         }
@@ -44,35 +44,80 @@
             font-size: 14px;
         }
 
-        .tabs {
+        /* Step Indicator */
+        .steps {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            position: relative;
         }
 
-        .tab {
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .step {
             flex: 1;
-            padding: 12px;
-            background: #f0f0f0;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
             transition: all 0.3s;
         }
 
-        .tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .step.active .step-circle {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+        }
+
+        .step.completed .step-circle {
+            background: #28a745;
             color: white;
         }
 
-        .tab-content {
+        .step-label {
+            font-size: 12px;
+            color: #999;
+            font-weight: 600;
+        }
+
+        .step.active .step-label {
+            color: #667eea;
+        }
+
+        /* Step Content */
+        .step-content {
             display: none;
         }
 
-        .tab-content.active {
+        .step-content.active {
             display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .form-group {
@@ -100,31 +145,112 @@
             border-color: #667eea;
         }
 
-        .fingerprint-area {
+        /* Waiting Area */
+        .waiting-area {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             border: 3px dashed #667eea;
             border-radius: 15px;
             padding: 40px;
             text-align: center;
-            margin: 20px 0;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .fingerprint-area:hover {
-            background: linear-gradient(135deg, #e0e7ff 0%, #c3cfe2 100%);
         }
 
         .fingerprint-icon {
-            font-size: 60px;
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .waiting-text {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
             margin-bottom: 10px;
         }
 
-        .fingerprint-text {
+        .waiting-subtext {
             color: #666;
             font-size: 14px;
+            margin-bottom: 20px;
         }
 
+        .esp-command {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Success Area */
+        .success-area {
+            text-align: center;
+        }
+
+        .success-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+        }
+
+        .success-title {
+            font-size: 24px;
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .user-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .user-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .user-info-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .user-info-value {
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* Buttons */
         .btn {
             width: 100%;
             padding: 15px;
@@ -142,7 +268,7 @@
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
@@ -150,7 +276,15 @@
         .btn-primary:disabled {
             background: #ccc;
             cursor: not-allowed;
-            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
         }
 
         .message {
@@ -162,221 +296,255 @@
             display: none;
         }
 
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
         .message.error {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
 
-        .message.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+        .link-box {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
         }
 
-        .captured-status {
-            display: none;
-            color: #28a745;
-            font-size: 14px;
-            margin-top: 10px;
-            text-align: center;
+        .link-box a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Fingerprint System</h1>
-        <p class="subtitle">Sistem Pendaftaran & Verifikasi Sidik Jari</p>
+        <h1>🔐 Fingerprint Registration</h1>
+        <p class="subtitle">Sistem Pendaftaran Sidik Jari</p>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('enroll')">Daftar</button>
-            <button class="tab" onclick="switchTab('verify')">Verifikasi</button>
+        <!-- Step Indicator -->
+        <div class="steps">
+            <div class="step active" id="step-indicator-1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Data Diri</div>
+            </div>
+            <div class="step" id="step-indicator-2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Scan Jari</div>
+            </div>
+            <div class="step" id="step-indicator-3">
+                <div class="step-circle">3</div>
+                <div class="step-label">Selesai</div>
+            </div>
         </div>
 
-        <!-- Tab Enroll -->
-        <div id="enroll-tab" class="tab-content active">
-            <form id="enrollForm">
+        <!-- Step 1: Form Data Diri -->
+        <div class="step-content active" id="step1">
+            <form id="dataForm">
                 <div class="form-group">
-                    <label for="userId">ID User</label>
-                    <input type="text" id="userId" placeholder="Masukkan ID (contoh: 001)" required>
+                    <label for="userId">User ID</label>
+                    <input type="text" id="userId" placeholder="Contoh: 001, 002, 003..." required>
                 </div>
+                
                 <div class="form-group">
-                    <label for="userName">Nama</label>
+                    <label for="userName">Nama Lengkap</label>
                     <input type="text" id="userName" placeholder="Masukkan nama lengkap" required>
                 </div>
-                <div class="form-group">
-                    <label>Sidik Jari</label>
-                    <div class="fingerprint-area" onclick="captureFingerprint('enroll')">
-                        <div class="fingerprint-icon">👆</div>
-                        <div class="fingerprint-text">Klik untuk capture sidik jari</div>
-                    </div>
-                    <div id="enroll-captured" class="captured-status">✓ Sidik jari berhasil di-capture!</div>
-                </div>
-                <button type="submit" class="btn btn-primary" id="enrollBtn" disabled>
-                    Daftar User
+
+                <button type="submit" class="btn btn-primary">
+                    Lanjut ke Scan Fingerprint →
                 </button>
             </form>
-            <div id="enrollMessage" class="message"></div>
+            <div id="errorMessage" class="message error"></div>
         </div>
 
-        <!-- Tab Verify -->
-        <div id="verify-tab" class="tab-content">
-            <div class="form-group">
-                <label>Sidik Jari</label>
-                <div class="fingerprint-area" onclick="captureFingerprint('verify')">
-                    <div class="fingerprint-icon">👆</div>
-                    <div class="fingerprint-text">Klik untuk capture sidik jari</div>
-                </div>
-                <div id="verify-captured" class="captured-status">✓ Sidik jari berhasil di-capture!</div>
+        <!-- Step 2: Waiting for ESP32 -->
+        <div class="step-content" id="step2">
+            <div class="waiting-area">
+                <div class="fingerprint-icon">👆</div>
+                <div class="waiting-text">Menunggu Data dari ESP32...</div>
+                <div class="waiting-subtext">Silakan jalankan perintah di ESP32 Serial Monitor:</div>
+                
+                <div class="esp-command" id="espCommand">ENROLL:---</div>
+                
+                <div class="spinner"></div>
+                
+                <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                    💡 Pastikan ESP32 sudah terhubung dan scan fingerprint Anda
+                </p>
             </div>
-            <button class="btn btn-primary" id="verifyBtn" onclick="verifyFingerprint()" disabled>
-                Verifikasi
+            
+            <button class="btn btn-secondary" onclick="cancelEnroll()" style="margin-top: 20px;">
+                ← Kembali
             </button>
-            <div id="verifyMessage" class="message"></div>
+        </div>
+
+        <!-- Step 3: Success -->
+        <div class="step-content" id="step3">
+            <div class="success-area">
+                <div class="success-icon">✅</div>
+                <div class="success-title">Pendaftaran Berhasil!</div>
+                <p style="color: #666; margin-bottom: 20px;">Sidik jari telah tersimpan di sistem</p>
+                
+                <div class="user-info">
+                    <div class="user-info-row">
+                        <span class="user-info-label">User ID:</span>
+                        <span class="user-info-value" id="successUserId">-</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">Nama:</span>
+                        <span class="user-info-value" id="successUserName">-</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">Waktu Daftar:</span>
+                        <span class="user-info-value" id="successRegistered">-</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">Waktu Enrolled:</span>
+                        <span class="user-info-value" id="successEnrolled">-</span>
+                    </div>
+                    <div class="user-info-row">
+                        <span class="user-info-label">Status:</span>
+                        <span class="user-info-value" style="color: #28a745;">Enrolled ✓</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="registerAnother()">
+                    ➕ Daftarkan User Lain
+                </button>
+            </div>
+        </div>
+
+        <div class="link-box">
+            <a href="/dashboard">📊 Lihat Dashboard</a>
         </div>
     </div>
 
     <script>
-        let enrollTemplate = null;
-        let verifyTemplate = null;
+        let currentUserId = '';
+        let currentUserName = '';
+        let registeredTime = null;
+        let checkInterval = null;
 
-        function switchTab(tab) {
-            // Update tab buttons
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(tab + '-tab').classList.add('active');
-
-            // Clear messages
-            clearMessages();
-        }
-
-        function clearMessages() {
-            document.querySelectorAll('.message').forEach(m => {
-                m.style.display = 'none';
-                m.textContent = '';
-            });
-        }
-
-        function captureFingerprint(type) {
-            // Simulasi capture fingerprint (generate random template)
-            // Dalam aplikasi nyata, ini akan menggunakan sensor fingerprint
-            const template = generateRandomTemplate();
-            
-            if (type === 'enroll') {
-                enrollTemplate = template;
-                document.getElementById('enroll-captured').style.display = 'block';
-                document.getElementById('enrollBtn').disabled = false;
-            } else {
-                verifyTemplate = template;
-                document.getElementById('verify-captured').style.display = 'block';
-                document.getElementById('verifyBtn').disabled = false;
-            }
-
-            showMessage(type + 'Message', 'Sidik jari berhasil di-capture!', 'info');
-        }
-
-        function generateRandomTemplate() {
-            // Generate template random (simulasi)
-            let template = '';
-            for (let i = 0; i < 100; i++) {
-                template += Math.random() > 0.5 ? '1' : '0';
-            }
-            return template;
-        }
-
-        function showMessage(elementId, message, type) {
-            const msgElement = document.getElementById(elementId);
-            msgElement.textContent = message;
-            msgElement.className = 'message ' + type;
-            msgElement.style.display = 'block';
-        }
-
-        // Handle Enroll Form
-        document.getElementById('enrollForm').addEventListener('submit', async (e) => {
+        // Step 1: Submit form data diri
+        document.getElementById('dataForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            if (!enrollTemplate) {
-                showMessage('enrollMessage', 'Silakan capture sidik jari terlebih dahulu!', 'error');
-                return;
-            }
-
-            const userId = document.getElementById('userId').value;
-            const userName = document.getElementById('userName').value;
+            currentUserId = document.getElementById('userId').value.trim();
+            currentUserName = document.getElementById('userName').value.trim();
+            registeredTime = new Date();
+            const errorMsg = document.getElementById('errorMessage');
 
             try {
-                const response = await fetch('/enroll', {
+                const response = await fetch('/api/register_user', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        id: userId,
-                        name: userName,
-                        fingerprint_template: enrollTemplate
+                        user_id: currentUserId,
+                        name: currentUserName
                     })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    showMessage('enrollMessage', data.message, 'success');
-                    // Reset form
-                    document.getElementById('enrollForm').reset();
-                    enrollTemplate = null;
-                    document.getElementById('enroll-captured').style.display = 'none';
-                    document.getElementById('enrollBtn').disabled = true;
+                    // Pindah ke step 2
+                    goToStep(2);
+                    document.getElementById('espCommand').textContent = `ENROLL:${currentUserId}`;
+                    
+                    // Mulai polling untuk cek apakah ESP sudah kirim data
+                    startChecking();
                 } else {
-                    showMessage('enrollMessage', data.message, 'error');
+                    errorMsg.textContent = data.message;
+                    errorMsg.style.display = 'block';
                 }
             } catch (error) {
-                showMessage('enrollMessage', 'Terjadi kesalahan: ' + error.message, 'error');
+                errorMsg.textContent = 'Terjadi kesalahan: ' + error.message;
+                errorMsg.style.display = 'block';
             }
         });
 
-        // Handle Verify
-        async function verifyFingerprint() {
-            if (!verifyTemplate) {
-                showMessage('verifyMessage', 'Silakan capture sidik jari terlebih dahulu!', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch('/verify', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        fingerprint_template: verifyTemplate
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.status === 'match') {
-                    showMessage('verifyMessage', 
-                        `✓ Cocok! ID: ${data.id}, Nama: ${data.name}`, 'success');
-                } else {
-                    showMessage('verifyMessage', '✗ Sidik jari tidak ditemukan!', 'error');
+        // Fungsi untuk polling cek status user
+        function startChecking() {
+            checkInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/check_status/${currentUserId}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'enrolled') {
+                        // Template sudah diterima!
+                        clearInterval(checkInterval);
+                        showSuccess();
+                    }
+                } catch (error) {
+                    console.error('Error checking status:', error);
                 }
-
-                // Reset
-                verifyTemplate = null;
-                document.getElementById('verify-captured').style.display = 'none';
-                document.getElementById('verifyBtn').disabled = true;
-            } catch (error) {
-                showMessage('verifyMessage', 'Terjadi kesalahan: ' + error.message, 'error');
-            }
+            }, 2000); // Cek setiap 2 detik
         }
+
+        function goToStep(stepNumber) {
+            // Update indicator
+            document.querySelectorAll('.step').forEach((step, index) => {
+                step.classList.remove('active', 'completed');
+                if (index + 1 < stepNumber) {
+                    step.classList.add('completed');
+                } else if (index + 1 === stepNumber) {
+                    step.classList.add('active');
+                }
+            });
+
+            // Update content
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === stepNumber) {
+                    content.classList.add('active');
+                }
+            });
+        }
+
+        function showSuccess() {
+            goToStep(3);
+            document.getElementById('successUserId').textContent = currentUserId;
+            document.getElementById('successUserName').textContent = currentUserName;
+            document.getElementById('successRegistered').textContent = formatDateTime(registeredTime);
+            document.getElementById('successEnrolled').textContent = formatDateTime(new Date());
+        }
+
+        function formatDateTime(date) {
+            return date.toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function cancelEnroll() {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+            goToStep(1);
+            
+            // Hapus user dari database (rollback)
+            fetch(`/api/delete_user/${currentUserId}`, { method: 'DELETE' })
+                .catch(err => console.error(err));
+        }
+
+        function registerAnother() {
+            goToStep(1);
+            document.getElementById('dataForm').reset();
+            document.getElementById('errorMessage').style.display = 'none';
+            currentUserId = '';
+            currentUserName = '';
+        }
+
+        // Cleanup saat window ditutup
+        window.addEventListener('beforeunload', () => {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+        });
     </script>
 </body>
 </html>
