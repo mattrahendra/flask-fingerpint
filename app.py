@@ -98,7 +98,7 @@ def validate_template(template_hex):
         
         # Check entropy - template yang bagus harus memiliki variasi
         unique_ratio = len(np.unique(template_bytes)) / len(template_bytes)
-        if unique_ratio < 0.3:
+        if unique_ratio < 0.25:  # Turunkan dari 0.3 ke 0.25 (25%)
             return False, f"Template quality buruk (variasi rendah: {unique_ratio:.2%})"
         
         return True, "OK"
