@@ -909,6 +909,109 @@ def get_user_templates(user_id):
         
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/api/get_all_templates', methods=['GET'])
+def get_all_templates():
+    """Get all enrolled templates for syncing to ESP32 sensor"""
+    try:
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        # Get all templates from fully enrolled users
+        c.execute("""SELECT ut.id, ut.user_id, ut.template, ut.template_quality, u.name
+                     FROM user_templates ut
+                     JOIN users u ON ut.user_id = u.user_id
+                     WHERE u.status='enrolled'
+                     ORDER BY ut.user_id, ut.template_index""")
+        templates = c.fetchall()
+        conn.close()
+        
+        if not templates:
+            return jsonify({
+                "status": "success",
+                "templates": [],
+                "message": "No templates available"
+            })
+        
+        template_list = []
+        for t in templates:
+            template_list.append({
+                "template_id": t[0],      # ID unik template
+                "user_id": t[1],          # ID user (untuk ditampilkan saat match)
+                "template": t[2],         # Hex string template
+                "quality": round(t[3] * 100, 2),
+                "name": t[4]              # Nama user
+            })
+        
+        return jsonify({
+            "status": "success",
+            "templates": template_list,
+            "total": len(template_list),
+            "message": f"{len(template_list)} templates ready for sync"
+        })
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@app.route('/api/log_verify', methods=['POST'])
+def log_verify():
+    """Log verification result from ESP32 local matching"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        success = data.get('success', False)
+        confidence = data.get('confidence', 0)
+        
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        if success and user_id != 'unknown':
+            # Get user name
+            c.execute("SELECT name FROM users WHERE user_id=?", (user_id,))
+            user = c.fetchone()
+            
+            if user:
+                name = user[0]
+                
+                # Check duplicate
+                is_duplicate, last_time = check_duplicate_attendance(conn, user_id)
+                if is_duplicate:
+                    conn.close()
+                    return jsonify({
+                        "status": "duplicate",
+                        "message": f"Already recorded at {last_time}"
+                    })
+                
+                # Record attendance
+                c.execute("""INSERT INTO attendance 
+                            (user_id, name, confidence, hamming_score, cosine_score, ensemble_score) 
+                            VALUES (?, ?, ?, NULL, NULL, NULL)""", 
+                         (user_id, name, confidence))
+                
+                conn.commit()
+                conn.close()
+                
+                return jsonify({
+                    "status": "success",
+                    "message": f"Attendance recorded for {name}",
+                    "user_id": user_id,
+                    "name": name
+                })
+        
+        conn.close()
+        return jsonify({
+            "status": "logged",
+            "message": "Verification logged (no match)"
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
