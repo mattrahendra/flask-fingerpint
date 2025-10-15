@@ -487,6 +487,36 @@ def delete_user(user_id):
         return jsonify({"status": "success", "message": "User deleted"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+@app.route('/api/debug/mapping', methods=['GET'])
+def debug_mapping():
+    """Debug endpoint untuk cek sensor mapping"""
+    try:
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        c.execute("""SELECT sensor_slot_id, user_id, template_db_id, synced_at 
+                     FROM sensor_mapping 
+                     ORDER BY sensor_slot_id""")
+        mappings = c.fetchall()
+        conn.close()
+        
+        mapping_list = []
+        for m in mappings:
+            mapping_list.append({
+                "sensor_slot_id": m[0],
+                "user_id": m[1],
+                "template_db_id": m[2],
+                "synced_at": m[3]
+            })
+        
+        return jsonify({
+            "status": "success",
+            "mappings": mapping_list,
+            "total": len(mapping_list)
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
