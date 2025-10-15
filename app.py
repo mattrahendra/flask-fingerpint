@@ -278,7 +278,7 @@ def log_access():
     """Log access dari ESP32 (sukses atau gagal)"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id', 'unknown')
+        sensor_slot_id = data.get('user_id')
         success = data.get('success', False)
         confidence = data.get('confidence', 0)
         sensor_id = data.get('sensor_id', 0)
@@ -286,7 +286,15 @@ def log_access():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        name = "Unknown"
+        c.execute("SELECT user_id FROM sensor_mapping WHERE sensor_slot_id=?", (sensor_slot_id,))
+        mapped = c.fetchone()
+        
+        if mapped:
+            user_id = mapped[0]
+        else:
+            user_id = 'unknown'
+        
+        name = 'Unknown'
         
         if success and user_id != 'unknown':
             # Get user name
