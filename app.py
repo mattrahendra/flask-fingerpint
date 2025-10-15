@@ -343,13 +343,16 @@ def get_all_templates():
         conn.close()
         
         template_list = []
+        sensor_slot_id = 1
         for t in templates:
             template_list.append({
                 "template_id": t[0],
                 "user_id": t[1],
                 "template": t[2],
-                "name": t[3]
+                "name": t[3],
+                "sensor_slot_id" : sensor_slot_id
             })
+            sensor_slot_id += 1
         
         return jsonify({
             "status": "success",
