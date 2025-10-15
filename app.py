@@ -11,9 +11,6 @@ CORS(app)
 # Timezone Indonesia (WIB)
 WIB = pytz.timezone('Asia/Jakarta')
 
-# Multi-template configuration
-REQUIRED_TEMPLATES = 3
-
 # Anti-duplicate check window (dalam detik)
 DUPLICATE_CHECK_WINDOW = 10
 
@@ -22,27 +19,16 @@ def init_db():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
     
-    # Tabel users
+    # Tabel users (single template per user)
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     user_id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
                     registered_at TIMESTAMP,
                     status TEXT DEFAULT 'pending',
-                    templates_count INTEGER DEFAULT 0
+                    template TEXT
                 )''')
     
-    # Tabel untuk menyimpan multiple templates per user
-    c.execute('''CREATE TABLE IF NOT EXISTS user_templates (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id TEXT NOT NULL,
-                    template TEXT NOT NULL,
-                    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    template_index INTEGER,
-                    sensor_slot_id INTEGER,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-                )''')
-    
-    # Tabel access logs (sukses dan gagal)
+    # Tabel access logs
     c.execute('''CREATE TABLE IF NOT EXISTS access_logs (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT,
@@ -54,14 +40,21 @@ def init_db():
                     access_type TEXT DEFAULT 'verify'
                 )''')
     
-    # Tabel mapping sensor_slot_id ke user_id (BARU)
+    # Tabel mapping sensor_slot_id ke user_id
     c.execute('''CREATE TABLE IF NOT EXISTS sensor_mapping (
                     sensor_slot_id INTEGER PRIMARY KEY,
                     user_id TEXT NOT NULL,
-                    template_db_id INTEGER NOT NULL,
                     synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-                    FOREIGN KEY (template_db_id) REFERENCES user_templates(id) ON DELETE CASCADE
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                )''')
+    
+    # Tabel enrollment status (untuk real-time feedback)
+    c.execute('''CREATE TABLE IF NOT EXISTS enrollment_status (
+                    user_id TEXT PRIMARY KEY,
+                    status TEXT,
+                    message TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                 )''')
     
     conn.commit()
@@ -102,20 +95,16 @@ def dashboard():
 def test_endpoint():
     return jsonify({
         "status": "success",
-        "message": "Server OK - Sensor-based Verification",
+        "message": "Server OK - Enhanced Dual-Scan Enrollment",
         "timestamp": get_wib_time().isoformat(),
-        "timezone": "Asia/Jakarta (WIB)",
-        "config": {
-            "required_templates": REQUIRED_TEMPLATES,
-            "duplicate_window": DUPLICATE_CHECK_WINDOW
-        }
+        "timezone": "Asia/Jakarta (WIB)"
     })
 
 # ===== ENROLLMENT API =====
 
 @app.route('/api/start_enroll', methods=['POST'])
 def start_enroll():
-    """Inisialisasi enrollment baru tanpa user_id (auto-generated)"""
+    """Inisialisasi enrollment baru"""
     try:
         data = request.get_json()
         name = data.get('name')
@@ -126,15 +115,20 @@ def start_enroll():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Generate user_id otomatis (incremental)
+        # Generate user_id otomatis
         c.execute("SELECT MAX(CAST(user_id AS INTEGER)) FROM users WHERE user_id GLOB '[0-9]*'")
         result = c.fetchone()
         next_id = 1 if not result[0] else int(result[0]) + 1
-        user_id = str(next_id).zfill(3)  # Format: 001, 002, 003...
+        user_id = str(next_id).zfill(3)
         
-        c.execute("""INSERT INTO users (user_id, name, status, registered_at, templates_count) 
-                     VALUES (?, ?, 'enrolling', ?, 0)""", 
+        c.execute("""INSERT INTO users (user_id, name, status, registered_at) 
+                     VALUES (?, ?, 'pending', ?)""", 
                   (user_id, name, get_wib_time()))
+        
+        # Initialize enrollment status
+        c.execute("""INSERT INTO enrollment_status (user_id, status, message, updated_at)
+                     VALUES (?, 'pending', 'Waiting for ESP32 to detect', ?)""",
+                  (user_id, get_wib_time()))
         
         conn.commit()
         conn.close()
@@ -143,8 +137,70 @@ def start_enroll():
             "status": "success",
             "message": f"Enrollment started for {name}",
             "user_id": user_id,
+            "name": name
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/enroll_status', methods=['POST'])
+def update_enroll_status():
+    """Update status enrollment dari ESP32"""
+    try:
+        data = request.get_json(force=True)
+        user_id = data.get('user_id')
+        status = data.get('status')
+        message = data.get('message')
+        
+        if not user_id:
+            return jsonify({"status": "error", "message": "user_id required"}), 400
+        
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        # Update enrollment status
+        c.execute("""INSERT OR REPLACE INTO enrollment_status 
+                     (user_id, status, message, updated_at)
+                     VALUES (?, ?, ?, ?)""",
+                  (user_id, status, message, get_wib_time()))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/check_enroll_status/<user_id>', methods=['GET'])
+def check_enroll_status(user_id):
+    """Check status enrollment untuk web interface"""
+    try:
+        conn = sqlite3.connect('fingerprint.db')
+        c = conn.cursor()
+        
+        c.execute("""SELECT es.status, es.message, es.updated_at, u.name
+                     FROM enrollment_status es
+                     JOIN users u ON es.user_id = u.user_id
+                     WHERE es.user_id = ?""", (user_id,))
+        result = c.fetchone()
+        
+        if not result:
+            conn.close()
+            return jsonify({"status": "not_found"}), 404
+        
+        status, message, updated_at, name = result
+        
+        conn.close()
+        
+        return jsonify({
+            "status": "success",
+            "user_id": user_id,
             "name": name,
-            "required_templates": REQUIRED_TEMPLATES
+            "enrollment_status": status,
+            "message": message,
+            "updated_at": updated_at,
+            "completed": status == "success"
         })
         
     except Exception as e:
@@ -152,7 +208,7 @@ def start_enroll():
 
 @app.route('/api/save_template', methods=['POST'])
 def save_template():
-    """Simpan template dari ESP32"""
+    """Simpan template final dari ESP32"""
     try:
         data = request.get_json(force=True)
         user_id = data.get('user_id')
@@ -164,7 +220,7 @@ def save_template():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("SELECT name, status, templates_count FROM users WHERE user_id=?", (user_id,))
+        c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
         user = c.fetchone()
         
         if not user:
@@ -174,36 +230,28 @@ def save_template():
                 "message": f"User ID '{user_id}' not found"
             }), 404
         
-        user_name, current_status, templates_count = user
+        user_name, current_status = user
         
-        # Simpan template
-        new_index = templates_count + 1
-        c.execute("""INSERT INTO user_templates 
-                     (user_id, template, template_index, enrolled_at) 
-                     VALUES (?, ?, ?, ?)""", 
-                  (user_id, template, new_index, get_wib_time()))
-        
-        # Update user status
-        new_status = 'enrolled' if new_index >= REQUIRED_TEMPLATES else 'enrolling'
+        # Save template
         c.execute("""UPDATE users 
-                     SET templates_count=?, status=? 
+                     SET template=?, status='enrolled' 
                      WHERE user_id=?""", 
-                  (new_index, new_status, user_id))
+                  (template, user_id))
+        
+        # Update enrollment status
+        c.execute("""INSERT OR REPLACE INTO enrollment_status 
+                     (user_id, status, message, updated_at)
+                     VALUES (?, 'success', 'Enrollment completed', ?)""",
+                  (user_id, get_wib_time()))
         
         conn.commit()
         conn.close()
         
-        remaining = REQUIRED_TEMPLATES - new_index
-        
         return jsonify({
-            "status": "success" if remaining == 0 else "partial",
-            "message": f"Template {new_index}/{REQUIRED_TEMPLATES} saved",
+            "status": "success",
+            "message": "Template saved successfully",
             "user_id": user_id,
-            "name": user_name,
-            "templates_count": new_index,
-            "required_templates": REQUIRED_TEMPLATES,
-            "remaining": remaining,
-            "completed": remaining == 0
+            "name": user_name
         }), 200
         
     except Exception as e:
@@ -214,33 +262,6 @@ def save_template():
             "traceback": traceback.format_exc()
         }), 500
 
-@app.route('/api/check_enroll_status/<user_id>', methods=['GET'])
-def check_enroll_status(user_id):
-    """Check enrollment progress"""
-    try:
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT name, status, templates_count FROM users WHERE user_id=?", (user_id,))
-        user = c.fetchone()
-        conn.close()
-        
-        if not user:
-            return jsonify({"status": "not_found"}), 404
-        
-        return jsonify({
-            "status": "success",
-            "user_id": user_id,
-            "name": user[0],
-            "enrollment_status": user[1],
-            "templates_count": user[2],
-            "required_templates": REQUIRED_TEMPLATES,
-            "completed": user[2] >= REQUIRED_TEMPLATES
-        })
-        
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
 @app.route('/api/get_pending_enrollment', methods=['GET'])
 def get_pending_enrollment():
     """Get the most recent pending enrollment (for ESP32 auto-detect)"""
@@ -248,10 +269,10 @@ def get_pending_enrollment():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        # Get the most recent user that is still enrolling
-        c.execute("""SELECT user_id, name, templates_count 
+        # Get the most recent user that is still pending
+        c.execute("""SELECT user_id, name 
                      FROM users 
-                     WHERE status IN ('pending', 'enrolling')
+                     WHERE status = 'pending'
                      ORDER BY registered_at DESC 
                      LIMIT 1""")
         user = c.fetchone()
@@ -263,9 +284,7 @@ def get_pending_enrollment():
         return jsonify({
             "status": "success",
             "user_id": user[0],
-            "name": user[1],
-            "templates_count": user[2],
-            "required_templates": REQUIRED_TEMPLATES
+            "name": user[1]
         })
         
     except Exception as e:
@@ -342,32 +361,29 @@ def get_all_templates():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("""SELECT ut.id, ut.user_id, ut.template, u.name
-                     FROM user_templates ut
-                     JOIN users u ON ut.user_id = u.user_id
-                     WHERE u.status='enrolled'
-                     ORDER BY ut.user_id, ut.template_index""")
+        c.execute("""SELECT user_id, template, name
+                     FROM users
+                     WHERE status='enrolled' AND template IS NOT NULL
+                     ORDER BY user_id""")
         templates = c.fetchall()
         
-        # ✅ Clear old mapping
+        # Clear old mapping
         c.execute("DELETE FROM sensor_mapping")
         
         template_list = []
-        sensor_slot_id = 1  # Start dari 1 (bukan 0)
+        sensor_slot_id = 1  # Start dari 1
         for t in templates:
-            template_db_id = t[0]
-            user_id = t[1]
-            template = t[2]
-            name = t[3]
+            user_id = t[0]
+            template = t[1]
+            name = t[2]
             
-            # ✅ Insert mapping sensor_slot_id → user_id
+            # Insert mapping sensor_slot_id → user_id
             c.execute("""INSERT OR REPLACE INTO sensor_mapping 
-                         (sensor_slot_id, user_id, template_db_id, synced_at)
-                         VALUES (?, ?, ?, ?)""",
-                      (sensor_slot_id, user_id, template_db_id, get_wib_time()))
+                         (sensor_slot_id, user_id, synced_at)
+                         VALUES (?, ?, ?)""",
+                      (sensor_slot_id, user_id, get_wib_time()))
             
             template_list.append({
-                "template_id": template_db_id,
                 "user_id": user_id,
                 "template": template,
                 "name": name,
@@ -400,7 +416,7 @@ def get_users():
     conn = sqlite3.connect('fingerprint.db')
     c = conn.cursor()
     
-    c.execute("""SELECT user_id, name, status, registered_at, templates_count
+    c.execute("""SELECT user_id, name, status, registered_at
                  FROM users ORDER BY registered_at DESC""")
     users = c.fetchall()
     conn.close()
@@ -411,9 +427,7 @@ def get_users():
             "user_id": user[0],
             "name": user[1],
             "status": user[2],
-            "registered_at": user[3],
-            "templates_count": user[4],
-            "required_templates": REQUIRED_TEMPLATES
+            "registered_at": user[3]
         })
     
     return jsonify({"status": "success", "users": user_list})
@@ -481,12 +495,12 @@ def get_stats():
 
 @app.route('/api/delete_user/<user_id>', methods=['DELETE'])
 def delete_user(user_id):
-    """Delete user dan semua templatenya"""
+    """Delete user dan semua datanya"""
     try:
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("DELETE FROM user_templates WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM enrollment_status WHERE user_id=?", (user_id,))
         c.execute("DELETE FROM users WHERE user_id=?", (user_id,))
         
         conn.commit()
@@ -503,7 +517,7 @@ def debug_mapping():
         conn = sqlite3.connect('fingerprint.db')
         c = conn.cursor()
         
-        c.execute("""SELECT sensor_slot_id, user_id, template_db_id, synced_at 
+        c.execute("""SELECT sensor_slot_id, user_id, synced_at 
                      FROM sensor_mapping 
                      ORDER BY sensor_slot_id""")
         mappings = c.fetchall()
@@ -514,8 +528,7 @@ def debug_mapping():
             mapping_list.append({
                 "sensor_slot_id": m[0],
                 "user_id": m[1],
-                "template_db_id": m[2],
-                "synced_at": m[3]
+                "synced_at": m[2]
             })
         
         return jsonify({

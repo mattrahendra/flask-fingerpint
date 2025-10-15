@@ -30,7 +30,7 @@
                     <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
                     <div>
                         <h1 class="text-2xl font-bold">Fingerprint System</h1>
-                        <p class="text-xs text-gray-400">Dashboard & Monitoring</p>
+                        <p class="text-xs text-gray-400">Dashboard & Monitoring - Dual-Scan Verification</p>
                     </div>
                 </div>
                 <a href="/" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
@@ -89,6 +89,17 @@
                     <div class="bg-red-400/20 p-4 rounded-lg">
                         <i class="fas fa-door-closed text-2xl text-red-400"></i>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Banner -->
+        <div class="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-4 mb-8">
+            <div class="flex items-center space-x-3">
+                <i class="fas fa-shield-check text-2xl text-purple-400"></i>
+                <div>
+                    <p class="font-semibold text-purple-300">Enhanced Security</p>
+                    <p class="text-sm text-gray-400">All enrollments use dual-scan verification for maximum accuracy</p>
                 </div>
             </div>
         </div>
@@ -163,8 +174,8 @@
                             <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Templates</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold">Registered (WIB)</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usersBody" class="divide-y divide-dark-accent">
@@ -252,21 +263,27 @@
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        ${user.status === 'enrolled' 
-                            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Enrolled</span>'
-                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> ' + user.status + '</span>'
-                        }
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="text-sm ${user.templates_count >= 3 ? 'text-green-400' : 'text-yellow-400'}">
-                            ${user.templates_count} / ${user.required_templates}
-                        </span>
+                        ${getStatusBadge(user.status)}
                     </td>
                     <td class="px-6 py-4 text-gray-400 text-sm">
                         ${formatDate(user.registered_at)}
                     </td>
+                    <td class="px-6 py-4">
+                        <button onclick="deleteUser('${user.user_id}', '${user.name}')" 
+                                class="text-red-400 hover:text-red-300 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
                 </tr>
             `).join('');
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'enrolled': '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-shield-check mr-1"></i> Enrolled</span>',
+                'pending': '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> Pending</span>'
+            };
+            return badges[status] || '<span class="text-gray-400">' + status + '</span>';
         }
 
         function displayLogs(logs) {
@@ -339,6 +356,29 @@
                 second: '2-digit',
                 timeZone: 'Asia/Jakarta'
             });
+        }
+
+        async function deleteUser(userId, userName) {
+            if (!confirm(`Delete user "${userName}" (${userId})?\nThis action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/delete_user/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    showToast(`User ${userName} deleted successfully`, 'success');
+                    loadData();
+                } else {
+                    showToast('Failed to delete user: ' + data.message, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            }
         }
 
         function showToast(message, type = 'info') {

@@ -30,7 +30,7 @@
                     <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
                     <div>
                         <h1 class="text-xl font-bold">Fingerprint System</h1>
-                        <p class="text-xs text-gray-400">Enrollment Portal</p>
+                        <p class="text-xs text-gray-400">Enhanced Dual-Scan Enrollment</p>
                     </div>
                 </div>
                 <a href="/dashboard" class="flex items-center space-x-2 bg-dark-accent hover:bg-dark-accent/80 px-4 py-2 rounded-lg transition">
@@ -70,59 +70,63 @@
                 <div id="errorMessage" class="mt-4 hidden bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg"></div>
             </div>
 
-            <!-- Step 2: Enrollment Progress -->
+            <!-- Step 2: Enrollment Process -->
             <div id="step2" class="hidden">
                 <div class="text-center mb-8">
-                    <div class="inline-block bg-blue-500/20 p-6 rounded-full mb-4 animate-pulse">
+                    <div id="fingerIcon" class="inline-block bg-blue-500/20 p-6 rounded-full mb-4">
                         <i class="fas fa-fingerprint text-5xl text-blue-500"></i>
                     </div>
-                    <h2 class="text-3xl font-bold mb-2">Scan Your Fingerprint</h2>
-                    <p class="text-gray-400">Place your finger on Sensor 1 (Enrollment)</p>
+                    <h2 id="stepTitle" class="text-3xl font-bold mb-2">Preparing...</h2>
+                    <p id="stepInstruction" class="text-gray-400">Please wait...</p>
                     <p class="text-sm text-gray-500 mt-2">User ID: <span id="assignedUserId" class="text-blue-400 font-mono">---</span></p>
                 </div>
 
-                <!-- Progress Bar -->
-                <div class="mb-8">
-                    <div class="flex justify-between text-sm mb-2">
-                        <span class="text-gray-400">Progress</span>
-                        <span class="text-blue-400 font-semibold"><span id="currentCount">0</span> / 3 Templates</span>
+                <!-- Progress Steps -->
+                <div class="space-y-4 mb-8">
+                    <!-- Step 1: First Scan -->
+                    <div id="progressStep1" class="flex items-center gap-4 p-4 bg-dark-accent rounded-lg opacity-50">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                            <i class="fas fa-hand-point-down text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold">Step 1: Place Finger</p>
+                            <p class="text-sm text-gray-400">Place your finger on the sensor</p>
+                        </div>
+                        <i id="checkStep1" class="fas fa-clock text-gray-500 text-xl"></i>
                     </div>
-                    <div class="w-full bg-dark-accent rounded-full h-3 overflow-hidden">
-                        <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 transition-all duration-500 rounded-full" style="width: 0%"></div>
+
+                    <!-- Step 2: Remove Finger -->
+                    <div id="progressStep2" class="flex items-center gap-4 p-4 bg-dark-accent rounded-lg opacity-50">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                            <i class="fas fa-hand-paper text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold">Step 2: Lift Finger</p>
+                            <p class="text-sm text-gray-400">Remove your finger from the sensor</p>
+                        </div>
+                        <i id="checkStep2" class="fas fa-clock text-gray-500 text-xl"></i>
+                    </div>
+
+                    <!-- Step 3: Second Scan -->
+                    <div id="progressStep3" class="flex items-center gap-4 p-4 bg-dark-accent rounded-lg opacity-50">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                            <i class="fas fa-hand-point-down text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold">Step 3: Place Again</p>
+                            <p class="text-sm text-gray-400">Place the SAME finger again</p>
+                        </div>
+                        <i id="checkStep3" class="fas fa-clock text-gray-500 text-xl"></i>
                     </div>
                 </div>
 
-                <!-- Template Status -->
-                <div class="space-y-3 mb-6">
-                    <div id="template1" class="flex items-center justify-between bg-dark-accent p-4 rounded-lg opacity-50">
-                        <div class="flex items-center space-x-3">
-                            <i class="fas fa-fingerprint text-2xl text-gray-500"></i>
-                            <span>Template 1</span>
-                        </div>
-                        <i class="fas fa-clock text-gray-500"></i>
-                    </div>
-                    <div id="template2" class="flex items-center justify-between bg-dark-accent p-4 rounded-lg opacity-50">
-                        <div class="flex items-center space-x-3">
-                            <i class="fas fa-fingerprint text-2xl text-gray-500"></i>
-                            <span>Template 2</span>
-                        </div>
-                        <i class="fas fa-clock text-gray-500"></i>
-                    </div>
-                    <div id="template3" class="flex items-center justify-between bg-dark-accent p-4 rounded-lg opacity-50">
-                        <div class="flex items-center space-x-3">
-                            <i class="fas fa-fingerprint text-2xl text-gray-500"></i>
-                            <span>Template 3</span>
-                        </div>
-                        <i class="fas fa-clock text-gray-500"></i>
-                    </div>
-                </div>
-
-                <div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-center">
+                <!-- Status Message -->
+                <div id="statusBox" class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-center mb-6">
                     <i class="fas fa-info-circle text-blue-400 mr-2"></i>
-                    <span class="text-sm text-blue-300">Scan the same finger 3 times for accuracy</span>
+                    <span id="statusMessage" class="text-sm text-blue-300">Waiting for sensor...</span>
                 </div>
 
-                <button onclick="cancelEnroll()" class="mt-6 w-full bg-dark-accent hover:bg-dark-accent/80 py-3 rounded-lg transition">
+                <button onclick="cancelEnroll()" class="w-full bg-dark-accent hover:bg-dark-accent/80 py-3 rounded-lg transition">
                     <i class="fas fa-times mr-2"></i>Cancel Enrollment
                 </button>
             </div>
@@ -134,7 +138,7 @@
                         <i class="fas fa-check-circle text-6xl text-green-500"></i>
                     </div>
                     <h3 class="text-3xl font-bold text-green-500 mb-2">Enrollment Complete!</h3>
-                    <p class="text-gray-400">Your fingerprint has been registered successfully</p>
+                    <p class="text-gray-400">Your fingerprint has been verified and registered</p>
                 </div>
                 
                 <div class="bg-dark-accent rounded-xl p-6 mb-6 space-y-3">
@@ -147,15 +151,30 @@
                         <span class="font-bold" id="successUserName">-</span>
                     </div>
                     <div class="flex justify-between items-center py-2">
-                        <span class="text-gray-400">Templates:</span>
+                        <span class="text-gray-400">Verification:</span>
                         <span class="text-green-500 font-semibold">
-                            <i class="fas fa-check-circle mr-1"></i>3 / 3 Saved
+                            <i class="fas fa-shield-check mr-1"></i>Dual-Scan Verified
                         </span>
                     </div>
                 </div>
 
                 <button onclick="registerAnother()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition">
                     <i class="fas fa-plus mr-2"></i>Register Another User
+                </button>
+            </div>
+
+            <!-- Step 4: Error -->
+            <div id="step4" class="hidden text-center">
+                <div class="mb-6">
+                    <div class="inline-block bg-red-500/20 p-6 rounded-full mb-4">
+                        <i class="fas fa-exclamation-triangle text-6xl text-red-500"></i>
+                    </div>
+                    <h3 class="text-3xl font-bold text-red-500 mb-2">Enrollment Failed</h3>
+                    <p id="errorText" class="text-gray-400">An error occurred during enrollment</p>
+                </div>
+
+                <button onclick="registerAnother()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition">
+                    <i class="fas fa-redo mr-2"></i>Try Again
                 </button>
             </div>
         </div>
@@ -172,7 +191,7 @@
         let currentUserId = '';
         let currentUserName = '';
         let checkInterval = null;
-        let templateCount = 0;
+        let currentStep = 0;
 
         document.getElementById('nameForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -213,54 +232,121 @@
                     const data = await response.json();
                     
                     if (data.status === 'success') {
-                        const newCount = data.templates_count;
+                        updateEnrollmentUI(data.enrollment_status, data.message);
                         
-                        if (newCount > templateCount) {
-                            // Update progress
-                            templateCount = newCount;
-                            updateProgress(templateCount);
-                            
-                            if (data.completed) {
-                                clearInterval(checkInterval);
-                                setTimeout(() => showSuccess(), 500);
-                            } else {
-                                showToast(`Template ${templateCount}/3 received!`, 'success');
-                            }
+                        if (data.completed) {
+                            clearInterval(checkInterval);
+                            setTimeout(() => showSuccess(), 500);
                         }
                     }
                 } catch (error) {
                     console.error('Error checking status:', error);
                 }
-            }, 1000);
+            }, 500);  // Check every 500ms for real-time updates
         }
 
-        function updateProgress(count) {
-            const percentage = (count / 3) * 100;
-            document.getElementById('progressBar').style.width = percentage + '%';
-            document.getElementById('currentCount').textContent = count;
-            
-            // Update template status
-            for (let i = 1; i <= count; i++) {
-                const template = document.getElementById(`template${i}`);
-                template.classList.remove('opacity-50');
-                template.classList.add('bg-green-500/20');
-                template.querySelector('i:last-child').className = 'fas fa-check-circle text-green-500 text-xl';
-                template.querySelector('.fa-fingerprint').className = 'fas fa-fingerprint text-2xl text-green-500';
+        function updateEnrollmentUI(status, message) {
+            const fingerIcon = document.getElementById('fingerIcon');
+            const stepTitle = document.getElementById('stepTitle');
+            const stepInstruction = document.getElementById('stepInstruction');
+            const statusMessage = document.getElementById('statusMessage');
+            const statusBox = document.getElementById('statusBox');
+
+            statusMessage.textContent = message;
+
+            switch(status) {
+                case 'waiting_first_scan':
+                    if (currentStep !== 1) {
+                        currentStep = 1;
+                        activateStep(1);
+                        fingerIcon.innerHTML = '<i class="fas fa-fingerprint text-5xl text-blue-500 animate-pulse"></i>';
+                        stepTitle.textContent = 'Place Your Finger';
+                        stepInstruction.textContent = 'Place your finger on Sensor 1';
+                        statusBox.className = 'bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 text-center mb-6';
+                    }
+                    break;
+
+                case 'waiting_remove':
+                    if (currentStep !== 2) {
+                        currentStep = 2;
+                        completeStep(1);
+                        activateStep(2);
+                        fingerIcon.innerHTML = '<i class="fas fa-hand-paper text-5xl text-yellow-500 animate-bounce"></i>';
+                        stepTitle.textContent = 'Lift Your Finger';
+                        stepInstruction.textContent = 'Remove your finger from the sensor';
+                        statusBox.className = 'bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 text-center mb-6';
+                        showToast('First scan complete! Lift your finger', 'success');
+                    }
+                    break;
+
+                case 'waiting_second_scan':
+                    if (currentStep !== 3) {
+                        currentStep = 3;
+                        completeStep(2);
+                        activateStep(3);
+                        fingerIcon.innerHTML = '<i class="fas fa-fingerprint text-5xl text-green-500 animate-pulse"></i>';
+                        stepTitle.textContent = 'Place Finger Again';
+                        stepInstruction.textContent = 'Place the SAME finger on the sensor';
+                        statusBox.className = 'bg-green-500/10 border border-green-500/30 rounded-lg p-4 text-center mb-6';
+                        showToast('Now place the same finger again', 'info');
+                    }
+                    break;
+
+                case 'mismatch':
+                    showError('Fingerprints did not match! Please use the SAME finger for both scans.');
+                    break;
+
+                case 'error':
+                    showError(message);
+                    break;
+
+                case 'timeout':
+                    showError('Enrollment timeout. Please try again.');
+                    break;
             }
+        }
+
+        function activateStep(stepNum) {
+            const stepEl = document.getElementById(`progressStep${stepNum}`);
+            stepEl.classList.remove('opacity-50');
+            stepEl.classList.add('bg-blue-500/20', 'border', 'border-blue-500/50');
+            const circle = stepEl.querySelector('.rounded-full');
+            circle.classList.remove('bg-gray-600');
+            circle.classList.add('bg-blue-600', 'animate-pulse');
+        }
+
+        function completeStep(stepNum) {
+            const stepEl = document.getElementById(`progressStep${stepNum}`);
+            stepEl.classList.remove('bg-blue-500/20', 'border-blue-500/50');
+            stepEl.classList.add('bg-green-500/20', 'border', 'border-green-500/50');
+            const circle = stepEl.querySelector('.rounded-full');
+            circle.classList.remove('bg-blue-600', 'animate-pulse');
+            circle.classList.add('bg-green-600');
+            const check = document.getElementById(`checkStep${stepNum}`);
+            check.className = 'fas fa-check-circle text-green-500 text-xl';
         }
 
         function goToStep(stepNumber) {
             document.getElementById('step1').classList.add('hidden');
             document.getElementById('step2').classList.add('hidden');
             document.getElementById('step3').classList.add('hidden');
+            document.getElementById('step4').classList.add('hidden');
             document.getElementById(`step${stepNumber}`).classList.remove('hidden');
         }
 
         function showSuccess() {
+            completeStep(3);
             goToStep(3);
             document.getElementById('successUserId').textContent = currentUserId;
             document.getElementById('successUserName').textContent = currentUserName;
-            showToast('Enrollment completed!', 'success');
+            showToast('Enrollment completed successfully!', 'success');
+        }
+
+        function showError(message) {
+            if (checkInterval) clearInterval(checkInterval);
+            document.getElementById('errorText').textContent = message;
+            goToStep(4);
+            showToast(message, 'error');
         }
 
         function cancelEnroll() {
@@ -276,17 +362,17 @@
             document.getElementById('errorMessage').classList.add('hidden');
             currentUserId = '';
             currentUserName = '';
-            templateCount = 0;
+            currentStep = 0;
             
-            // Reset template status
+            // Reset all progress steps
             for (let i = 1; i <= 3; i++) {
-                const template = document.getElementById(`template${i}`);
-                template.classList.add('opacity-50');
-                template.classList.remove('bg-green-500/20');
-                template.querySelector('i:last-child').className = 'fas fa-clock text-gray-500';
-                template.querySelector('.fa-fingerprint').className = 'fas fa-fingerprint text-2xl text-gray-500';
+                const stepEl = document.getElementById(`progressStep${i}`);
+                stepEl.className = 'flex items-center gap-4 p-4 bg-dark-accent rounded-lg opacity-50';
+                const circle = stepEl.querySelector('.rounded-full');
+                circle.className = 'flex-shrink-0 w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center';
+                const check = document.getElementById(`checkStep${i}`);
+                check.className = 'fas fa-clock text-gray-500 text-xl';
             }
-            document.getElementById('progressBar').style.width = '0%';
         }
 
         function showToast(message, type = 'info') {
