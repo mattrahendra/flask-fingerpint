@@ -343,19 +343,21 @@ def get_all_templates():
         
         # ✅ Clear old mapping
         c.execute("DELETE FROM sensor_mapping")
-
+        
         template_list = []
-        sensor_slot_id = 1
+        sensor_slot_id = 1  # Start dari 1 (bukan 0)
         for t in templates:
             template_db_id = t[0]
             user_id = t[1]
             template = t[2]
             name = t[3]
-
+            
             # ✅ Insert mapping sensor_slot_id → user_id
-            c.execute("""INSERT OR REPLACE INTO sensor_mapping
-                        (sensor_slot_id, user_id, template_db_id, synced_at) VALUES (?, ?, ?, ?)""", (sensor_slot_id, user_id, template_db_id, get_wib_time()))
-
+            c.execute("""INSERT OR REPLACE INTO sensor_mapping 
+                         (sensor_slot_id, user_id, template_db_id, synced_at)
+                         VALUES (?, ?, ?, ?)""",
+                      (sensor_slot_id, user_id, template_db_id, get_wib_time()))
+            
             template_list.append({
                 "template_id": template_db_id,
                 "user_id": user_id,
@@ -364,7 +366,7 @@ def get_all_templates():
                 "sensor_slot_id": sensor_slot_id
             })
             sensor_slot_id += 1
-            
+        
         conn.commit()
         conn.close()
         
