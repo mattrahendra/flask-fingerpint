@@ -38,6 +38,7 @@ def init_db():
                     template TEXT NOT NULL,
                     enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     template_index INTEGER,
+                    sensor_slot_id INTEGER,
                     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
                 )''')
     
@@ -51,6 +52,16 @@ def init_db():
                     confidence INTEGER,
                     sensor_id INTEGER,
                     access_type TEXT DEFAULT 'verify'
+                )''')
+    
+    # Tabel mapping sensor_slot_id ke user_id (BARU)
+    c.execute('''CREATE TABLE IF NOT EXISTS sensor_mapping (
+                    sensor_slot_id INTEGER PRIMARY KEY,
+                    user_id TEXT NOT NULL,
+                    template_db_id INTEGER NOT NULL,
+                    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                    FOREIGN KEY (template_db_id) REFERENCES user_templates(id) ON DELETE CASCADE
                 )''')
     
     conn.commit()
