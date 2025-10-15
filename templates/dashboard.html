@@ -14,8 +14,7 @@
                         dark: {
                             primary: '#0a0e27',
                             secondary: '#151b3d',
-                            accent: '#1e2749',
-                            blue: '#2563eb'
+                            accent: '#1e2749'
                         }
                     }
                 }
@@ -24,7 +23,6 @@
     </script>
 </head>
 <body class="bg-dark-primary text-gray-100 min-h-screen">
-    <!-- Header -->
     <header class="bg-dark-secondary border-b border-dark-accent">
         <div class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
@@ -32,12 +30,12 @@
                     <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
                     <div>
                         <h1 class="text-2xl font-bold">Fingerprint System</h1>
-                        <p class="text-xs text-gray-400">Dashboard & Analytics</p>
+                        <p class="text-xs text-gray-400">Dashboard & Monitoring</p>
                     </div>
                 </div>
                 <a href="/" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
                     <i class="fas fa-arrow-left"></i>
-                    <span>Back to Registration</span>
+                    <span>Back to Enrollment</span>
                 </a>
             </div>
         </div>
@@ -73,11 +71,11 @@
             <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm mb-1">Pending</p>
-                        <p class="text-3xl font-bold text-yellow-500" id="pendingUsers">0</p>
+                        <p class="text-gray-400 text-sm mb-1">Today Success</p>
+                        <p class="text-3xl font-bold text-green-400" id="todaySuccess">0</p>
                     </div>
-                    <div class="bg-yellow-500/20 p-4 rounded-lg">
-                        <i class="fas fa-clock text-2xl text-yellow-500"></i>
+                    <div class="bg-green-400/20 p-4 rounded-lg">
+                        <i class="fas fa-door-open text-2xl text-green-400"></i>
                     </div>
                 </div>
             </div>
@@ -85,34 +83,70 @@
             <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-400 text-sm mb-1">Total Attendance</p>
-                        <p class="text-3xl font-bold text-purple-500" id="totalAttendance">0</p>
+                        <p class="text-gray-400 text-sm mb-1">Today Failed</p>
+                        <p class="text-3xl font-bold text-red-400" id="todayFailed">0</p>
                     </div>
-                    <div class="bg-purple-500/20 p-4 rounded-lg">
-                        <i class="fas fa-clipboard-check text-2xl text-purple-500"></i>
+                    <div class="bg-red-400/20 p-4 rounded-lg">
+                        <i class="fas fa-door-closed text-2xl text-red-400"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-4 mb-8">
+        <!-- Refresh Button -->
+        <div class="flex gap-4 mb-8">
             <button onclick="loadData()" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition">
                 <i class="fas fa-sync-alt"></i>
                 <span>Refresh Data</span>
             </button>
-            <button onclick="trainEnsemble()" class="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg transition">
-                <i class="fas fa-brain"></i>
-                <span>Train Model</span>
-            </button>
-            <button onclick="evaluateModel()" class="flex items-center space-x-2 bg-green-600 hover:bg-green-700 px-6 py-3 rounded-lg transition">
-                <i class="fas fa-chart-line"></i>
-                <span>Evaluate Model</span>
-            </button>
+        </div>
+
+        <!-- Access Logs Table -->
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+            <div class="p-6 border-b border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-history text-purple-500"></i>
+                        <span>Access Logs (Latest 100)</span>
+                    </h2>
+                    <div class="flex space-x-4 text-sm">
+                        <span class="text-gray-400">
+                            <i class="fas fa-check-circle text-green-400 mr-1"></i>
+                            Success: <span id="logSuccessCount" class="font-bold">0</span>
+                        </span>
+                        <span class="text-gray-400">
+                            <i class="fas fa-times-circle text-red-400 mr-1"></i>
+                            Failed: <span id="logFailedCount" class="font-bold">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-dark-accent">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Timestamp (WIB)</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Confidence</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Sensor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody" class="divide-y divide-dark-accent">
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Users Table -->
-        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent">
             <div class="p-6 border-b border-dark-accent">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-bold flex items-center space-x-2">
@@ -129,8 +163,8 @@
                             <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Registered</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Enrolled</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Templates</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Registered (WIB)</th>
                         </tr>
                     </thead>
                     <tbody id="usersBody" class="divide-y divide-dark-accent">
@@ -144,140 +178,8 @@
                 </table>
             </div>
         </div>
-
-        <!-- Attendance Table -->
-        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
-            <div class="p-6 border-b border-dark-accent">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-bold flex items-center space-x-2">
-                        <i class="fas fa-clipboard-list text-green-500"></i>
-                        <span>Recent Attendance</span>
-                    </h2>
-                    <span class="text-sm text-gray-400">Last 50 records</span>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-dark-accent">
-                        <tr>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Timestamp</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Hamming</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Cosine</th>
-                            <th class="px-6 py-4 text-left text-sm font-semibold">Ensemble</th>
-                        </tr>
-                    </thead>
-                    <tbody id="attendanceBody" class="divide-y divide-dark-accent">
-                        <tr>
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">
-                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                                <p>Loading...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Evaluation Results -->
-        <div id="evaluationSection" class="hidden">
-            <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
-                <div class="p-6 border-b border-dark-accent">
-                    <h2 class="text-xl font-bold flex items-center space-x-2">
-                        <i class="fas fa-chart-bar text-purple-500"></i>
-                        <span>Model Evaluation Results</span>
-                    </h2>
-                </div>
-                <div class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div class="bg-dark-accent p-4 rounded-lg">
-                            <p class="text-gray-400 text-sm mb-2">Total Samples</p>
-                            <p class="text-2xl font-bold" id="evalTotalSamples">-</p>
-                        </div>
-                        <div class="bg-dark-accent p-4 rounded-lg">
-                            <p class="text-gray-400 text-sm mb-2">Genuine Samples</p>
-                            <p class="text-2xl font-bold text-green-500" id="evalGenuine">-</p>
-                        </div>
-                        <div class="bg-dark-accent p-4 rounded-lg">
-                            <p class="text-gray-400 text-sm mb-2">Impostor Samples</p>
-                            <p class="text-2xl font-bold text-red-500" id="evalImpostor">-</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- Hamming Results -->
-                        <div class="bg-dark-accent p-6 rounded-lg">
-                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
-                                <i class="fas fa-chart-line text-blue-500"></i>
-                                <span>Hamming Distance</span>
-                            </h3>
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-gray-400 text-sm">AUC</p>
-                                    <p class="text-xl font-bold" id="hammingAUC">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER</p>
-                                    <p class="text-xl font-bold" id="hammingEER">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER Threshold</p>
-                                    <p class="text-lg" id="hammingEERThreshold">-</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Cosine Results -->
-                        <div class="bg-dark-accent p-6 rounded-lg">
-                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
-                                <i class="fas fa-chart-line text-green-500"></i>
-                                <span>Cosine Similarity</span>
-                            </h3>
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-gray-400 text-sm">AUC</p>
-                                    <p class="text-xl font-bold" id="cosineAUC">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER</p>
-                                    <p class="text-xl font-bold" id="cosineEER">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER Threshold</p>
-                                    <p class="text-lg" id="cosineEERThreshold">-</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Ensemble Results -->
-                        <div class="bg-dark-accent p-6 rounded-lg border-2 border-purple-500">
-                            <h3 class="text-lg font-bold mb-4 flex items-center space-x-2">
-                                <i class="fas fa-brain text-purple-500"></i>
-                                <span>Ensemble Model</span>
-                            </h3>
-                            <div class="space-y-3">
-                                <div>
-                                    <p class="text-gray-400 text-sm">AUC</p>
-                                    <p class="text-xl font-bold text-purple-500" id="ensembleAUC">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER</p>
-                                    <p class="text-xl font-bold text-purple-500" id="ensembleEER">-</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 text-sm">EER Threshold</p>
-                                    <p class="text-lg" id="ensembleEERThreshold">-</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 bg-dark-secondary border border-dark-accent rounded-lg shadow-xl p-4 transform translate-y-32 transition-transform duration-300 max-w-sm z-50">
         <div class="flex items-center space-x-3">
             <i id="toastIcon" class="fas fa-info-circle text-2xl"></i>
@@ -286,14 +188,22 @@
     </div>
 
     <script>
-        // Load data on page load
         loadData();
-        
-        // Auto refresh every 10 seconds
-        setInterval(loadData, 10000);
+        setInterval(loadData, 5000); // Auto refresh every 5 seconds
 
         async function loadData() {
             try {
+                // Load stats
+                const statsResponse = await fetch('/api/stats');
+                const statsData = await statsResponse.json();
+                
+                if (statsData.status === 'success') {
+                    document.getElementById('totalUsers').textContent = statsData.stats.total_users;
+                    document.getElementById('enrolledUsers').textContent = statsData.stats.enrolled;
+                    document.getElementById('todaySuccess').textContent = statsData.stats.today_success;
+                    document.getElementById('todayFailed').textContent = statsData.stats.today_failed;
+                }
+
                 // Load users
                 const usersResponse = await fetch('/api/users');
                 const usersData = await usersResponse.json();
@@ -302,32 +212,22 @@
                     displayUsers(usersData.users);
                 }
 
-                // Load attendance
-                const attendanceResponse = await fetch('/api/attendance');
-                const attendanceData = await attendanceResponse.json();
+                // Load access logs
+                const logsResponse = await fetch('/api/access_logs');
+                const logsData = await logsResponse.json();
                 
-                if (attendanceData.status === 'success') {
-                    displayAttendance(attendanceData.attendance);
+                if (logsData.status === 'success') {
+                    displayLogs(logsData.logs);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                showToast('Error loading data', 'error');
             }
         }
 
         function displayUsers(users) {
             const tbody = document.getElementById('usersBody');
-            const totalUsers = users.length;
-            const enrolled = users.filter(u => u.status === 'enrolled').length;
-            const pending = users.filter(u => u.status === 'pending').length;
+            document.getElementById('usersCount').textContent = `${users.length} users`;
 
-            // Update stats
-            document.getElementById('totalUsers').textContent = totalUsers;
-            document.getElementById('enrolledUsers').textContent = enrolled;
-            document.getElementById('pendingUsers').textContent = pending;
-            document.getElementById('usersCount').textContent = `${totalUsers} users`;
-
-            // Update table
             if (users.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -354,68 +254,76 @@
                     <td class="px-6 py-4">
                         ${user.status === 'enrolled' 
                             ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Enrolled</span>'
-                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> Pending</span>'
+                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> ' + user.status + '</span>'
                         }
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm ${user.templates_count >= 3 ? 'text-green-400' : 'text-yellow-400'}">
+                            ${user.templates_count} / ${user.required_templates}
+                        </span>
                     </td>
                     <td class="px-6 py-4 text-gray-400 text-sm">
                         ${formatDate(user.registered_at)}
-                    </td>
-                    <td class="px-6 py-4 text-gray-400 text-sm">
-                        ${user.enrolled_at ? formatDate(user.enrolled_at) : '-'}
                     </td>
                 </tr>
             `).join('');
         }
 
-        function displayAttendance(attendance) {
-            const tbody = document.getElementById('attendanceBody');
+        function displayLogs(logs) {
+            const tbody = document.getElementById('logsBody');
             
-            // Update total attendance stat
-            document.getElementById('totalAttendance').textContent = attendance.length;
+            const successCount = logs.filter(l => l.success).length;
+            const failedCount = logs.filter(l => !l.success).length;
+            
+            document.getElementById('logSuccessCount').textContent = successCount;
+            document.getElementById('logFailedCount').textContent = failedCount;
 
-            if (attendance.length === 0) {
+            if (logs.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" class="px-6 py-8 text-center text-gray-400">
                             <i class="fas fa-clipboard text-3xl mb-2"></i>
-                            <p>No attendance records yet</p>
+                            <p>No access logs yet</p>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tbody.innerHTML = attendance.map(log => `
-                <tr class="hover:bg-dark-accent/50 transition">
-                    <td class="px-6 py-4">
-                        <span class="font-mono font-semibold text-blue-400">${log.user_id}</span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-user-circle text-gray-400"></i>
-                            <span class="font-medium">${log.name}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-gray-400 text-sm">
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-dark-accent/50 transition ${!log.success ? 'bg-red-500/5' : ''}">
+                    <td class="px-6 py-4 text-sm text-gray-400">
                         ${formatDate(log.timestamp)}
                     </td>
                     <td class="px-6 py-4">
-                        <span class="text-sm ${getScoreColor(log.hamming_score)}">${log.hamming_score ? log.hamming_score.toFixed(2) + '%' : '-'}</span>
+                        <span class="font-mono font-semibold ${log.success ? 'text-blue-400' : 'text-gray-500'}">${log.user_id}</span>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="text-sm ${getScoreColor(log.cosine_score)}">${log.cosine_score ? log.cosine_score.toFixed(2) + '%' : '-'}</span>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-user-circle ${log.success ? 'text-gray-400' : 'text-red-400'}"></i>
+                            <span class="font-medium ${!log.success ? 'text-gray-500' : ''}">${log.name}</span>
+                        </div>
                     </td>
                     <td class="px-6 py-4">
-                        <span class="font-semibold ${getScoreColor(log.ensemble_score)}">${log.ensemble_score ? log.ensemble_score.toFixed(2) + '%' : '-'}</span>
+                        ${log.success 
+                            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Success</span>'
+                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400"><i class="fas fa-times-circle mr-1"></i> Failed</span>'
+                        }
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="font-semibold ${getConfidenceColor(log.confidence)}">${log.confidence}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-gray-400">Sensor ${log.sensor_id}</span>
                     </td>
                 </tr>
             `).join('');
         }
 
-        function getScoreColor(score) {
-            if (!score) return 'text-gray-400';
-            if (score >= 90) return 'text-green-400';
-            if (score >= 70) return 'text-yellow-400';
+        function getConfidenceColor(confidence) {
+            if (confidence >= 200) return 'text-green-400';
+            if (confidence >= 150) return 'text-yellow-400';
+            if (confidence >= 100) return 'text-orange-400';
             return 'text-red-400';
         }
 
@@ -427,76 +335,10 @@
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'Asia/Jakarta'
             });
-        }
-
-        async function trainEnsemble() {
-            showToast('Training ensemble model...', 'info');
-            try {
-                const response = await fetch('/api/train_ensemble', {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showToast('Model trained successfully!', 'success');
-                } else {
-                    showToast(data.message || 'Training failed', 'error');
-                }
-            } catch (error) {
-                showToast('Error training model: ' + error.message, 'error');
-            }
-        }
-
-        async function evaluateModel() {
-            showToast('Evaluating model...', 'info');
-            try {
-                const response = await fetch('/api/evaluate');
-                const data = await response.json();
-                
-                if (response.ok) {
-                    displayEvaluation(data);
-                    showToast('Evaluation complete!', 'success');
-                } else {
-                    showToast(data.message || 'Evaluation failed', 'error');
-                }
-            } catch (error) {
-                showToast('Error evaluating model: ' + error.message, 'error');
-            }
-        }
-
-        function displayEvaluation(data) {
-            document.getElementById('evaluationSection').classList.remove('hidden');
-            
-            // Stats
-            document.getElementById('evalTotalSamples').textContent = data.total_samples;
-            document.getElementById('evalGenuine').textContent = data.genuine_samples;
-            document.getElementById('evalImpostor').textContent = data.impostor_samples;
-            
-            // Hamming
-            if (data.results.Hamming) {
-                document.getElementById('hammingAUC').textContent = data.results.Hamming.AUC.toFixed(4);
-                document.getElementById('hammingEER').textContent = data.results.Hamming.EER.toFixed(2) + '%';
-                document.getElementById('hammingEERThreshold').textContent = data.results.Hamming.EER_threshold.toFixed(2);
-            }
-            
-            // Cosine
-            if (data.results.Cosine) {
-                document.getElementById('cosineAUC').textContent = data.results.Cosine.AUC.toFixed(4);
-                document.getElementById('cosineEER').textContent = data.results.Cosine.EER.toFixed(2) + '%';
-                document.getElementById('cosineEERThreshold').textContent = data.results.Cosine.EER_threshold.toFixed(2);
-            }
-            
-            // Ensemble
-            if (data.results.Ensemble) {
-                document.getElementById('ensembleAUC').textContent = data.results.Ensemble.AUC.toFixed(4);
-                document.getElementById('ensembleEER').textContent = data.results.Ensemble.EER.toFixed(2) + '%';
-                document.getElementById('ensembleEERThreshold').textContent = data.results.Ensemble.EER_threshold.toFixed(2);
-            }
-            
-            // Scroll to evaluation section
-            document.getElementById('evaluationSection').scrollIntoView({ behavior: 'smooth' });
         }
 
         function showToast(message, type = 'info') {
@@ -507,8 +349,7 @@
             const configs = {
                 success: { icon: 'fa-check-circle', color: 'text-green-500' },
                 error: { icon: 'fa-exclamation-circle', color: 'text-red-500' },
-                info: { icon: 'fa-info-circle', color: 'text-blue-500' },
-                warning: { icon: 'fa-exclamation-triangle', color: 'text-yellow-500' }
+                info: { icon: 'fa-info-circle', color: 'text-blue-500' }
             };
             
             const config = configs[type] || configs.info;
@@ -516,7 +357,6 @@
             messageEl.textContent = message;
             
             toast.style.transform = 'translateY(0)';
-            
             setTimeout(() => {
                 toast.style.transform = 'translateY(8rem)';
             }, 3000);

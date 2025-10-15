@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fingerprint Registration System</title>
+    <title>Dashboard - Fingerprint System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
@@ -14,8 +14,7 @@
                         dark: {
                             primary: '#0a0e27',
                             secondary: '#151b3d',
-                            accent: '#1e2749',
-                            blue: '#2563eb'
+                            accent: '#1e2749'
                         }
                     }
                 }
@@ -24,160 +23,163 @@
     </script>
 </head>
 <body class="bg-dark-primary text-gray-100 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-dark-secondary border-b border-dark-accent">
+    <header class="bg-dark-secondary border-b border-dark-accent">
         <div class="container mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <i class="fas fa-fingerprint text-3xl text-blue-500"></i>
                     <div>
-                        <h1 class="text-xl font-bold">Fingerprint System</h1>
-                        <p class="text-xs text-gray-400">Registration Portal</p>
+                        <h1 class="text-2xl font-bold">Fingerprint System</h1>
+                        <p class="text-xs text-gray-400">Dashboard & Monitoring</p>
                     </div>
                 </div>
-                <a href="/dashboard" class="flex items-center space-x-2 bg-dark-accent hover:bg-dark-accent/80 px-4 py-2 rounded-lg transition font-semibold">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Dashboard</span>
+                <a href="/" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Enrollment</span>
                 </a>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <!-- Registration Page -->
-    <div class="container mx-auto px-6 py-12 max-w-2xl">
-        <div class="bg-dark-secondary rounded-2xl shadow-2xl p-8 border border-dark-accent">
-            <div class="text-center mb-8">
-                <div class="inline-block bg-blue-500/20 p-6 rounded-full mb-4">
-                    <i class="fas fa-fingerprint text-5xl text-blue-500"></i>
-                </div>
-                <h2 class="text-3xl font-bold mb-2">Fingerprint Registration</h2>
-                <p class="text-gray-400">Register your fingerprint to the system</p>
-            </div>
-
-            <!-- Step Indicator -->
-            <div class="flex justify-between mb-8 relative">
-                <div class="absolute top-5 left-0 right-0 h-0.5 bg-dark-accent"></div>
-                <div class="step-indicator flex-1 text-center relative z-10">
-                    <div class="step-circle active" id="stepCircle1">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <p class="text-xs mt-2 font-semibold" id="stepLabel1">User Info</p>
-                </div>
-                <div class="step-indicator flex-1 text-center relative z-10">
-                    <div class="step-circle" id="stepCircle2">
-                        <i class="fas fa-fingerprint"></i>
-                    </div>
-                    <p class="text-xs mt-2" id="stepLabel2">Scan Finger</p>
-                </div>
-                <div class="step-indicator flex-1 text-center relative z-10">
-                    <div class="step-circle" id="stepCircle3">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <p class="text-xs mt-2" id="stepLabel3">Complete</p>
-                </div>
-            </div>
-
-            <!-- Step 1: Form -->
-            <div id="step1" class="step-content">
-                <form id="dataForm" class="space-y-6">
+    <div class="container mx-auto px-6 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
                     <div>
-                        <label class="block text-sm font-semibold mb-2">
-                            <i class="fas fa-id-card mr-2 text-blue-500"></i>User ID
-                        </label>
-                        <input type="text" id="userId" 
-                               class="w-full px-4 py-3 bg-dark-accent border border-dark-accent rounded-lg focus:border-blue-500 focus:outline-none transition text-gray-100"
-                               placeholder="e.g., 001, 002, 003..." required>
+                        <p class="text-gray-400 text-sm mb-1">Total Users</p>
+                        <p class="text-3xl font-bold" id="totalUsers">0</p>
                     </div>
-                    
+                    <div class="bg-blue-500/20 p-4 rounded-lg">
+                        <i class="fas fa-users text-2xl text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
                     <div>
-                        <label class="block text-sm font-semibold mb-2">
-                            <i class="fas fa-user mr-2 text-blue-500"></i>Full Name
-                        </label>
-                        <input type="text" id="userName" 
-                               class="w-full px-4 py-3 bg-dark-accent border border-dark-accent rounded-lg focus:border-blue-500 focus:outline-none transition text-gray-100"
-                               placeholder="Enter full name" required>
+                        <p class="text-gray-400 text-sm mb-1">Enrolled</p>
+                        <p class="text-3xl font-bold text-green-500" id="enrolledUsers">0</p>
                     </div>
-
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition flex items-center justify-center space-x-2">
-                        <span>Continue to Scan</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-                <div id="errorMessage" class="mt-4 hidden bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg"></div>
+                    <div class="bg-green-500/20 p-4 rounded-lg">
+                        <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                    </div>
+                </div>
             </div>
 
-            <!-- Step 2: Waiting -->
-            <div id="step2" class="step-content hidden text-center">
-                <div class="bg-dark-accent border-2 border-dashed border-blue-500 rounded-xl p-8">
-                    <div class="animate-pulse mb-6">
-                        <i class="fas fa-fingerprint text-7xl text-blue-500"></i>
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Today Success</p>
+                        <p class="text-3xl font-bold text-green-400" id="todaySuccess">0</p>
                     </div>
-                    <h3 class="text-2xl font-bold mb-2">Waiting for ESP32...</h3>
-                    <p class="text-gray-400 mb-6">Please scan your fingerprint on the ESP32 device</p>
-                    
-                    <div class="bg-dark-secondary p-4 rounded-lg mb-6">
-                        <p class="text-xs text-gray-400 mb-2">ESP32 Command:</p>
-                        <code class="text-green-400 font-mono text-lg" id="espCommand">ENROLL:---</code>
+                    <div class="bg-green-400/20 p-4 rounded-lg">
+                        <i class="fas fa-door-open text-2xl text-green-400"></i>
                     </div>
-                    
-                    <div class="flex justify-center mb-4">
-                        <div class="animate-spin rounded-full h-12 w-12 border-4 border-dark-accent border-t-blue-500"></div>
-                    </div>
-                    
-                    <p class="text-sm text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Make sure ESP32 is connected and ready
-                    </p>
                 </div>
-                
-                <button onclick="cancelEnroll()" class="mt-6 w-full bg-dark-accent hover:bg-dark-accent/80 py-3 rounded-lg font-semibold transition">
-                    <i class="fas fa-arrow-left mr-2"></i>Cancel
-                </button>
             </div>
 
-            <!-- Step 3: Success -->
-            <div id="step3" class="step-content hidden text-center">
-                <div class="mb-6">
-                    <div class="inline-block bg-green-500/20 p-6 rounded-full mb-4 animate-bounce">
-                        <i class="fas fa-check-circle text-6xl text-green-500"></i>
+            <div class="bg-dark-secondary rounded-xl p-6 border border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm mb-1">Today Failed</p>
+                        <p class="text-3xl font-bold text-red-400" id="todayFailed">0</p>
                     </div>
-                    <h3 class="text-3xl font-bold text-green-500 mb-2">Registration Successful!</h3>
-                    <p class="text-gray-400">Fingerprint has been saved to the system</p>
+                    <div class="bg-red-400/20 p-4 rounded-lg">
+                        <i class="fas fa-door-closed text-2xl text-red-400"></i>
+                    </div>
                 </div>
-                
-                <div class="bg-dark-accent rounded-xl p-6 mb-6 text-left space-y-3">
-                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
-                        <span class="text-gray-400">User ID:</span>
-                        <span class="font-bold text-blue-400" id="successUserId">-</span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
-                        <span class="text-gray-400">Name:</span>
-                        <span class="font-bold" id="successUserName">-</span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
-                        <span class="text-gray-400">Registered:</span>
-                        <span class="text-sm" id="successRegistered">-</span>
-                    </div>
-                    <div class="flex justify-between items-center py-2 border-b border-dark-secondary">
-                        <span class="text-gray-400">Enrolled:</span>
-                        <span class="text-sm" id="successEnrolled">-</span>
-                    </div>
-                    <div class="flex justify-between items-center py-2">
-                        <span class="text-gray-400">Status:</span>
-                        <span class="text-green-500 font-semibold">
-                            <i class="fas fa-check-circle mr-1"></i>Enrolled
+            </div>
+        </div>
+
+        <!-- Refresh Button -->
+        <div class="flex gap-4 mb-8">
+            <button onclick="loadData()" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh Data</span>
+            </button>
+        </div>
+
+        <!-- Access Logs Table -->
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent mb-8">
+            <div class="p-6 border-b border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-history text-purple-500"></i>
+                        <span>Access Logs (Latest 100)</span>
+                    </h2>
+                    <div class="flex space-x-4 text-sm">
+                        <span class="text-gray-400">
+                            <i class="fas fa-check-circle text-green-400 mr-1"></i>
+                            Success: <span id="logSuccessCount" class="font-bold">0</span>
+                        </span>
+                        <span class="text-gray-400">
+                            <i class="fas fa-times-circle text-red-400 mr-1"></i>
+                            Failed: <span id="logFailedCount" class="font-bold">0</span>
                         </span>
                     </div>
                 </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-dark-accent">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Timestamp (WIB)</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Confidence</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Sensor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody" class="divide-y divide-dark-accent">
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <button onclick="registerAnother()" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition">
-                    <i class="fas fa-plus mr-2"></i>Register Another User
-                </button>
+        <!-- Users Table -->
+        <div class="bg-dark-secondary rounded-xl border border-dark-accent">
+            <div class="p-6 border-b border-dark-accent">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-bold flex items-center space-x-2">
+                        <i class="fas fa-users text-blue-500"></i>
+                        <span>Registered Users</span>
+                    </h2>
+                    <span class="text-sm text-gray-400" id="usersCount">0 users</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-dark-accent">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">User ID</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Name</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Status</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Templates</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold">Registered (WIB)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody" class="divide-y divide-dark-accent">
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Loading...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-6 right-6 bg-dark-secondary border border-dark-accent rounded-lg shadow-xl p-4 transform translate-y-32 transition-transform duration-300 max-w-sm z-50">
         <div class="flex items-center space-x-3">
             <i id="toastIcon" class="fas fa-info-circle text-2xl"></i>
@@ -185,144 +187,158 @@
         </div>
     </div>
 
-    <style>
-        .step-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #1e2749;
-            color: #6b7280;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-        .step-circle.active {
-            background: #2563eb;
-            color: white;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
-        }
-        .step-circle.completed {
-            background: #10b981;
-            color: white;
-        }
-    </style>
-
     <script>
-        let currentUserId = '';
-        let currentUserName = '';
-        let registeredTime = null;
-        let checkInterval = null;
+        loadData();
+        setInterval(loadData, 5000); // Auto refresh every 5 seconds
 
-        // Registration Form
-        document.getElementById('dataForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            currentUserId = document.getElementById('userId').value.trim();
-            currentUserName = document.getElementById('userName').value.trim();
-            registeredTime = new Date();
-            const errorMsg = document.getElementById('errorMessage');
-
+        async function loadData() {
             try {
-                const response = await fetch('/api/register_user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: currentUserId,
-                        name: currentUserName
-                    })
-                });
+                // Load stats
+                const statsResponse = await fetch('/api/stats');
+                const statsData = await statsResponse.json();
+                
+                if (statsData.status === 'success') {
+                    document.getElementById('totalUsers').textContent = statsData.stats.total_users;
+                    document.getElementById('enrolledUsers').textContent = statsData.stats.enrolled;
+                    document.getElementById('todaySuccess').textContent = statsData.stats.today_success;
+                    document.getElementById('todayFailed').textContent = statsData.stats.today_failed;
+                }
 
-                const data = await response.json();
+                // Load users
+                const usersResponse = await fetch('/api/users');
+                const usersData = await usersResponse.json();
+                
+                if (usersData.status === 'success') {
+                    displayUsers(usersData.users);
+                }
 
-                if (response.ok) {
-                    goToStep(2);
-                    document.getElementById('espCommand').textContent = `ENROLL:${currentUserId}`;
-                    startChecking();
-                    errorMsg.classList.add('hidden');
-                } else {
-                    errorMsg.textContent = data.message;
-                    errorMsg.classList.remove('hidden');
+                // Load access logs
+                const logsResponse = await fetch('/api/access_logs');
+                const logsData = await logsResponse.json();
+                
+                if (logsData.status === 'success') {
+                    displayLogs(logsData.logs);
                 }
             } catch (error) {
-                errorMsg.textContent = 'Error: ' + error.message;
-                errorMsg.classList.remove('hidden');
+                console.error('Error loading data:', error);
             }
-        });
-
-        function startChecking() {
-            checkInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`/api/check_status/${currentUserId}`);
-                    const data = await response.json();
-                    
-                    if (data.status === 'enrolled') {
-                        clearInterval(checkInterval);
-                        showSuccess();
-                    }
-                } catch (error) {
-                    console.error('Error checking status:', error);
-                }
-            }, 2000);
         }
 
-        function goToStep(stepNumber) {
-            // Update circles
-            for (let i = 1; i <= 3; i++) {
-                const circle = document.getElementById(`stepCircle${i}`);
-                const label = document.getElementById(`stepLabel${i}`);
-                circle.classList.remove('active', 'completed');
-                label.classList.remove('font-semibold', 'text-blue-500');
-                
-                if (i < stepNumber) {
-                    circle.classList.add('completed');
-                } else if (i === stepNumber) {
-                    circle.classList.add('active');
-                    label.classList.add('font-semibold', 'text-blue-500');
-                }
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersBody');
+            document.getElementById('usersCount').textContent = `${users.length} users`;
+
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                            <i class="fas fa-user-slash text-3xl mb-2"></i>
+                            <p>No users registered yet</p>
+                        </td>
+                    </tr>
+                `;
+                return;
             }
 
-            // Update content
-            document.getElementById('step1').classList.add('hidden');
-            document.getElementById('step2').classList.add('hidden');
-            document.getElementById('step3').classList.add('hidden');
-            document.getElementById(`step${stepNumber}`).classList.remove('hidden');
+            tbody.innerHTML = users.map(user => `
+                <tr class="hover:bg-dark-accent/50 transition">
+                    <td class="px-6 py-4">
+                        <span class="font-mono font-semibold text-blue-400">${user.user_id}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-user-circle text-gray-400"></i>
+                            <span class="font-medium">${user.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${user.status === 'enrolled' 
+                            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Enrolled</span>'
+                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400"><i class="fas fa-clock mr-1"></i> ' + user.status + '</span>'
+                        }
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm ${user.templates_count >= 3 ? 'text-green-400' : 'text-yellow-400'}">
+                            ${user.templates_count} / ${user.required_templates}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-400 text-sm">
+                        ${formatDate(user.registered_at)}
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        function showSuccess() {
-            goToStep(3);
-            document.getElementById('successUserId').textContent = currentUserId;
-            document.getElementById('successUserName').textContent = currentUserName;
-            document.getElementById('successRegistered').textContent = formatDateTime(registeredTime);
-            document.getElementById('successEnrolled').textContent = formatDateTime(new Date());
+        function displayLogs(logs) {
+            const tbody = document.getElementById('logsBody');
+            
+            const successCount = logs.filter(l => l.success).length;
+            const failedCount = logs.filter(l => !l.success).length;
+            
+            document.getElementById('logSuccessCount').textContent = successCount;
+            document.getElementById('logFailedCount').textContent = failedCount;
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-400">
+                            <i class="fas fa-clipboard text-3xl mb-2"></i>
+                            <p>No access logs yet</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-dark-accent/50 transition ${!log.success ? 'bg-red-500/5' : ''}">
+                    <td class="px-6 py-4 text-sm text-gray-400">
+                        ${formatDate(log.timestamp)}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="font-mono font-semibold ${log.success ? 'text-blue-400' : 'text-gray-500'}">${log.user_id}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-user-circle ${log.success ? 'text-gray-400' : 'text-red-400'}"></i>
+                            <span class="font-medium ${!log.success ? 'text-gray-500' : ''}">${log.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        ${log.success 
+                            ? '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400"><i class="fas fa-check-circle mr-1"></i> Success</span>'
+                            : '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400"><i class="fas fa-times-circle mr-1"></i> Failed</span>'
+                        }
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="font-semibold ${getConfidenceColor(log.confidence)}">${log.confidence}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-gray-400">Sensor ${log.sensor_id}</span>
+                    </td>
+                </tr>
+            `).join('');
         }
 
-        function formatDateTime(date) {
+        function getConfidenceColor(confidence) {
+            if (confidence >= 200) return 'text-green-400';
+            if (confidence >= 150) return 'text-yellow-400';
+            if (confidence >= 100) return 'text-orange-400';
+            return 'text-red-400';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
             return date.toLocaleString('id-ID', {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-                second: '2-digit'
+                second: '2-digit',
+                timeZone: 'Asia/Jakarta'
             });
-        }
-
-        function cancelEnroll() {
-            if (checkInterval) clearInterval(checkInterval);
-            goToStep(1);
-            fetch(`/api/delete_user/${currentUserId}`, { method: 'DELETE' })
-                .catch(err => console.error(err));
-        }
-
-        function registerAnother() {
-            goToStep(1);
-            document.getElementById('dataForm').reset();
-            document.getElementById('errorMessage').classList.add('hidden');
-            currentUserId = '';
-            currentUserName = '';
         }
 
         function showToast(message, type = 'info') {
@@ -333,8 +349,7 @@
             const configs = {
                 success: { icon: 'fa-check-circle', color: 'text-green-500' },
                 error: { icon: 'fa-exclamation-circle', color: 'text-red-500' },
-                info: { icon: 'fa-info-circle', color: 'text-blue-500' },
-                warning: { icon: 'fa-exclamation-triangle', color: 'text-yellow-500' }
+                info: { icon: 'fa-info-circle', color: 'text-blue-500' }
             };
             
             const config = configs[type] || configs.info;
@@ -342,16 +357,10 @@
             messageEl.textContent = message;
             
             toast.style.transform = 'translateY(0)';
-            
             setTimeout(() => {
                 toast.style.transform = 'translateY(8rem)';
             }, 3000);
         }
-
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', () => {
-            if (checkInterval) clearInterval(checkInterval);
-        });
     </script>
 </body>
 </html>
