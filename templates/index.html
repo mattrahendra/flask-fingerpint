@@ -347,12 +347,14 @@
             document.getElementById('errorText').textContent = message;
             goToStep(4);
             showToast(message, 'error');
+            
+            // User sudah dihapus dari server oleh ESP32, tidak perlu delete lagi
         }
 
         function cancelEnroll() {
             if (checkInterval) clearInterval(checkInterval);
-            fetch(`/api/delete_user/${currentUserId}`, { method: 'DELETE' })
-                .catch(err => console.error(err));
+            // User akan dihapus oleh ESP32 saat cancel
+            showToast('Enrollment cancelled', 'info');
             registerAnother();
         }
 

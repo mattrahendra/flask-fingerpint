@@ -4,6 +4,8 @@ import sqlite3
 import os
 from datetime import datetime, timedelta
 import pytz
+import threading
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -14,9 +16,20 @@ WIB = pytz.timezone('Asia/Jakarta')
 # Anti-duplicate check window (dalam detik)
 DUPLICATE_CHECK_WINDOW = 10
 
+# Database connection dengan timeout dan configuration
+def get_db_connection():
+    conn = sqlite3.connect('fingerprint.db', timeout=30.0)
+    conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging untuk concurrent access
+    conn.execute('PRAGMA busy_timeout=30000')  # 30 detik timeout
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Thread lock untuk operasi write
+db_lock = threading.Lock()
+
 # Inisialisasi database
 def init_db():
-    conn = sqlite3.connect('fingerprint.db')
+    conn = get_db_connection()
     c = conn.cursor()
     
     # Tabel users (single template per user)
@@ -112,26 +125,27 @@ def start_enroll():
         if not name:
             return jsonify({"status": "error", "message": "Name is required"}), 400
         
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        # Generate user_id otomatis
-        c.execute("SELECT MAX(CAST(user_id AS INTEGER)) FROM users WHERE user_id GLOB '[0-9]*'")
-        result = c.fetchone()
-        next_id = 1 if not result[0] else int(result[0]) + 1
-        user_id = str(next_id).zfill(3)
-        
-        c.execute("""INSERT INTO users (user_id, name, status, registered_at) 
-                     VALUES (?, ?, 'pending', ?)""", 
-                  (user_id, name, get_wib_time()))
-        
-        # Initialize enrollment status
-        c.execute("""INSERT INTO enrollment_status (user_id, status, message, updated_at)
-                     VALUES (?, 'pending', 'Waiting for ESP32 to detect', ?)""",
-                  (user_id, get_wib_time()))
-        
-        conn.commit()
-        conn.close()
+        with db_lock:
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            # Generate user_id otomatis
+            c.execute("SELECT MAX(CAST(user_id AS INTEGER)) FROM users WHERE user_id GLOB '[0-9]*'")
+            result = c.fetchone()
+            next_id = 1 if not result[0] else int(result[0]) + 1
+            user_id = str(next_id).zfill(3)
+            
+            c.execute("""INSERT INTO users (user_id, name, status, registered_at) 
+                         VALUES (?, ?, 'pending', ?)""", 
+                      (user_id, name, get_wib_time()))
+            
+            # Initialize enrollment status
+            c.execute("""INSERT INTO enrollment_status (user_id, status, message, updated_at)
+                         VALUES (?, 'pending', 'Waiting for ESP32 to detect', ?)""",
+                      (user_id, get_wib_time()))
+            
+            conn.commit()
+            conn.close()
         
         return jsonify({
             "status": "success",
@@ -155,17 +169,18 @@ def update_enroll_status():
         if not user_id:
             return jsonify({"status": "error", "message": "user_id required"}), 400
         
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        # Update enrollment status
-        c.execute("""INSERT OR REPLACE INTO enrollment_status 
-                     (user_id, status, message, updated_at)
-                     VALUES (?, ?, ?, ?)""",
-                  (user_id, status, message, get_wib_time()))
-        
-        conn.commit()
-        conn.close()
+        with db_lock:
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            # Update enrollment status
+            c.execute("""INSERT OR REPLACE INTO enrollment_status 
+                         (user_id, status, message, updated_at)
+                         VALUES (?, ?, ?, ?)""",
+                      (user_id, status, message, get_wib_time()))
+            
+            conn.commit()
+            conn.close()
         
         return jsonify({"status": "success"})
         
@@ -176,7 +191,7 @@ def update_enroll_status():
 def check_enroll_status(user_id):
     """Check status enrollment untuk web interface"""
     try:
-        conn = sqlite3.connect('fingerprint.db')
+        conn = get_db_connection()
         c = conn.cursor()
         
         c.execute("""SELECT es.status, es.message, es.updated_at, u.name
@@ -184,14 +199,12 @@ def check_enroll_status(user_id):
                      JOIN users u ON es.user_id = u.user_id
                      WHERE es.user_id = ?""", (user_id,))
         result = c.fetchone()
+        conn.close()
         
         if not result:
-            conn.close()
             return jsonify({"status": "not_found"}), 404
         
         status, message, updated_at, name = result
-        
-        conn.close()
         
         return jsonify({
             "status": "success",
@@ -217,35 +230,36 @@ def save_template():
         if not user_id or not template:
             return jsonify({"status": "error", "message": "user_id and template required"}), 400
         
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
-        user = c.fetchone()
-        
-        if not user:
+        with db_lock:
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            c.execute("SELECT name, status FROM users WHERE user_id=?", (user_id,))
+            user = c.fetchone()
+            
+            if not user:
+                conn.close()
+                return jsonify({
+                    "status": "error", 
+                    "message": f"User ID '{user_id}' not found"
+                }), 404
+            
+            user_name, current_status = user
+            
+            # Save template
+            c.execute("""UPDATE users 
+                         SET template=?, status='enrolled' 
+                         WHERE user_id=?""", 
+                      (template, user_id))
+            
+            # Update enrollment status
+            c.execute("""INSERT OR REPLACE INTO enrollment_status 
+                         (user_id, status, message, updated_at)
+                         VALUES (?, 'success', 'Enrollment completed', ?)""",
+                      (user_id, get_wib_time()))
+            
+            conn.commit()
             conn.close()
-            return jsonify({
-                "status": "error", 
-                "message": f"User ID '{user_id}' not found"
-            }), 404
-        
-        user_name, current_status = user
-        
-        # Save template
-        c.execute("""UPDATE users 
-                     SET template=?, status='enrolled' 
-                     WHERE user_id=?""", 
-                  (template, user_id))
-        
-        # Update enrollment status
-        c.execute("""INSERT OR REPLACE INTO enrollment_status 
-                     (user_id, status, message, updated_at)
-                     VALUES (?, 'success', 'Enrollment completed', ?)""",
-                  (user_id, get_wib_time()))
-        
-        conn.commit()
-        conn.close()
         
         return jsonify({
             "status": "success",
@@ -266,7 +280,7 @@ def save_template():
 def get_pending_enrollment():
     """Get the most recent pending enrollment (for ESP32 auto-detect)"""
     try:
-        conn = sqlite3.connect('fingerprint.db')
+        conn = get_db_connection()
         c = conn.cursor()
         
         # Get the most recent user that is still pending
@@ -302,44 +316,45 @@ def log_access():
         confidence = data.get('confidence', 0)
         sensor_id = data.get('sensor_id', 0)
         
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        c.execute("SELECT user_id FROM sensor_mapping WHERE sensor_slot_id=?", (sensor_slot_id,))
-        mapped = c.fetchone()
-        
-        if mapped:
-            user_id = mapped[0]
-        else:
-            user_id = 'unknown'
-        
-        name = 'Unknown'
-        
-        if success and user_id != 'unknown':
-            # Get user name
-            c.execute("SELECT name FROM users WHERE user_id=?", (user_id,))
-            user = c.fetchone()
+        with db_lock:
+            conn = get_db_connection()
+            c = conn.cursor()
             
-            if user:
-                name = user[0]
+            c.execute("SELECT user_id FROM sensor_mapping WHERE sensor_slot_id=?", (sensor_slot_id,))
+            mapped = c.fetchone()
+            
+            if mapped:
+                user_id = mapped[0]
+            else:
+                user_id = 'unknown'
+            
+            name = 'Unknown'
+            
+            if success and user_id != 'unknown':
+                # Get user name
+                c.execute("SELECT name FROM users WHERE user_id=?", (user_id,))
+                user = c.fetchone()
                 
-                # Check duplicate
-                is_duplicate, last_time = check_duplicate_access(conn, user_id)
-                if is_duplicate:
-                    conn.close()
-                    return jsonify({
-                        "status": "duplicate",
-                        "message": f"Already accessed at {last_time}"
-                    })
-        
-        # Log access (baik sukses maupun gagal)
-        c.execute("""INSERT INTO access_logs 
-                    (user_id, name, success, confidence, sensor_id, timestamp) 
-                    VALUES (?, ?, ?, ?, ?, ?)""", 
-                 (user_id, name, 1 if success else 0, confidence, sensor_id, get_wib_time()))
-        
-        conn.commit()
-        conn.close()
+                if user:
+                    name = user[0]
+                    
+                    # Check duplicate
+                    is_duplicate, last_time = check_duplicate_access(conn, user_id)
+                    if is_duplicate:
+                        conn.close()
+                        return jsonify({
+                            "status": "duplicate",
+                            "message": f"Already accessed at {last_time}"
+                        })
+            
+            # Log access (baik sukses maupun gagal)
+            c.execute("""INSERT INTO access_logs 
+                        (user_id, name, success, confidence, sensor_id, timestamp) 
+                        VALUES (?, ?, ?, ?, ?, ?)""", 
+                     (user_id, name, 1 if success else 0, confidence, sensor_id, get_wib_time()))
+            
+            conn.commit()
+            conn.close()
         
         return jsonify({
             "status": "success",
@@ -358,41 +373,42 @@ def log_access():
 def get_all_templates():
     """Get all enrolled templates for ESP32 sync"""
     try:
-        conn = sqlite3.connect('fingerprint.db')
-        c = conn.cursor()
-        
-        c.execute("""SELECT user_id, template, name
-                     FROM users
-                     WHERE status='enrolled' AND template IS NOT NULL
-                     ORDER BY user_id""")
-        templates = c.fetchall()
-        
-        # Clear old mapping
-        c.execute("DELETE FROM sensor_mapping")
-        
-        template_list = []
-        sensor_slot_id = 1  # Start dari 1
-        for t in templates:
-            user_id = t[0]
-            template = t[1]
-            name = t[2]
+        with db_lock:
+            conn = get_db_connection()
+            c = conn.cursor()
             
-            # Insert mapping sensor_slot_id → user_id
-            c.execute("""INSERT OR REPLACE INTO sensor_mapping 
-                         (sensor_slot_id, user_id, synced_at)
-                         VALUES (?, ?, ?)""",
-                      (sensor_slot_id, user_id, get_wib_time()))
+            c.execute("""SELECT user_id, template, name
+                         FROM users
+                         WHERE status='enrolled' AND template IS NOT NULL
+                         ORDER BY user_id""")
+            templates = c.fetchall()
             
-            template_list.append({
-                "user_id": user_id,
-                "template": template,
-                "name": name,
-                "sensor_slot_id": sensor_slot_id
-            })
-            sensor_slot_id += 1
-        
-        conn.commit()
-        conn.close()
+            # Clear old mapping
+            c.execute("DELETE FROM sensor_mapping")
+            
+            template_list = []
+            sensor_slot_id = 1  # Start dari 1
+            for t in templates:
+                user_id = t[0]
+                template = t[1]
+                name = t[2]
+                
+                # Insert mapping sensor_slot_id → user_id
+                c.execute("""INSERT OR REPLACE INTO sensor_mapping 
+                             (sensor_slot_id, user_id, synced_at)
+                             VALUES (?, ?, ?)""",
+                          (sensor_slot_id, user_id, get_wib_time()))
+                
+                template_list.append({
+                    "user_id": user_id,
+                    "template": template,
+                    "name": name,
+                    "sensor_slot_id": sensor_slot_id
+                })
+                sensor_slot_id += 1
+            
+            conn.commit()
+            conn.close()
         
         return jsonify({
             "status": "success",
